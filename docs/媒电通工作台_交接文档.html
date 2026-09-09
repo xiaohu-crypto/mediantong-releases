@@ -65,7 +65,7 @@ pre code{background:none;color:inherit;padding:0}
     <li><b>平台</b>:Electron 桌面壳 + Web 技术栈(React 18 + TS strict + Vite + vitest);托盘/全局快捷键 Ctrl+K/通知/开机自启已实现。</li>
     <li><b>存储</b>:IndexedDB(schemaVersion=2 幂等迁移,21 个仓)+ 本地文件;软删除回收站 30 天;操作日志含 before 快照可撤销。</li>
     <li><b>AI 路由</b>:敏感数据默认本地;云调用强制过脱敏代理(手机号/金额/税号/客户名→占位符→还原);输出带 云/本地 徽标 + 路由原因;确认门槛低/中/高三级。</li>
-    <li><b>云模型</b>:Agnes AI,Base URL <code>https://apihub.agnes-ai.com/v1</code>,默认模型 <code>agnes-2.5-flash</code>,OpenAI 兼容(官方文档 wiki.agnes-ai.com)。</li>
+    <li><b>云模型</b>:OpenRouter(Base <code>https://openrouter.ai/api/v1</code>,实测 431 模型可达),默认模型 <code>google/gemini-3.8-flash</code>,OpenAI 兼容 + HTTP-Referer/X-Title 推荐头。</li>
     <li><b>密钥安全</b>:绝不写入源码;Electron safeStorage 加密存本地库;浏览器模式回退明文并标示。</li>
     <li><b>色彩纪律</b>:品牌红 #FE2C55 仅激活态/主CTA/红点,禁止表达错误(危险用 #FF6B6E);图表主系列青 #25F4EE;深色默认浅色辅助;专注模式;源码禁 emoji、禁硬编码色值(仅 tokens.css)。</li>
     <li><b>主数据</b>:Deal 唯一漏斗;Contact 一级实体;Payment/RateCard 版本/Pitch/Expense 等实体见需求文档 2.2;口径表见 2.3(健康度权重 30/30/20/20、冷启动 70)。</li>
@@ -87,11 +87,11 @@ npm run build          # 生产构建(当前成功)</code></pre>
 
 <h2>五、当前阻塞项(只等这两样)</h2>
 <div class="card">
-  <h3>1. Agnes AI 完整密钥(阻塞 AI 云链路实连)</h3>
+  <h3>1. OpenRouter 密钥待入应用(阻塞 chat 闭环)</h3>
   <p>用户此前在聊天里贴的密钥<b>被截断</b>(中间含省略号字符,fetch 实测报非 ASCII 错误)。两条恢复路:</p>
   <ul>
-    <li>推荐:在应用里填(系统管理 → AI 模型 → Key → 保存 → <b>测试连接</b>),密钥经 safeStorage 加密,不经过聊天;</li>
-    <li>或重发完整无省略号密钥,然后跑 <code>$env:AGNES_KEY="***"; node scripts/ai-probe.mjs</code>(脚本已入库,验证 /models + 一次真实补全)。</li>
+    <li><b>唯一路径:在应用里填</b>(系统管理 → AI 模型 → Key → 保存 → <b>测试连接</b>),密钥经 safeStorage 加密。实测证明:密钥经聊天/命令管道传输会被平台凭据掩码层破坏(sk-or-v1-… → ***)——所以请勿再在聊天里贴 Key。</li>
+    <li>应用内保存后点"测试连接",成功即闭环;失败信息会显示在按钮下方(含 HTTP 状态与响应摘要)。</li>
   </ul>
   <h3>2. Electron GUI 首跑反馈(阻塞桌面实操确认)</h3>
   <p>进程级冒烟已通过(启动 15s 存活无崩溃;WSA 10108 为无害噪音),但渲染界面需人眼确认:让用户跑 <code>npx electron .</code>,截图或报错发回即修。</p>
