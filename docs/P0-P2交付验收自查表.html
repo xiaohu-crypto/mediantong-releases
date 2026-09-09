@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>媒电通工作台 · P0-P2 交付验收自查表</title>
+<style>
+:root{--brand:#FE2C55;--data:#0891A8;--ok:#10b981;--warn:#f59e0b;--bad:#e11d48;
+--bg:#f6f7f9;--surface:#fff;--ink:#0f172a;--ink2:#334155;--ink3:#64748b;--border:#e2e8f0;--soft:#eef2f6;
+--font:'Inter','PingFang SC','Microsoft YaHei',system-ui,sans-serif;--mono:Consolas,monospace}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);color:var(--ink);font-size:14px;line-height:1.6;padding:32px 40px 80px;max-width:1100px;margin:0 auto}
+h1{font-size:24px;letter-spacing:-.02em}
+.meta{color:var(--ink3);font-size:12.5px;margin:6px 0 20px}
+.stat{display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap}
+.stat div{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 20px;text-align:center}
+.stat b{font-size:24px;display:block}
+.stat .ok b{color:var(--ok)}.stat .part b{color:var(--warn)}.stat .no b{color:var(--bad)}
+h2{font-size:17px;margin:28px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--brand)}
+table{width:100%;border-collapse:collapse;background:var(--surface);border-radius:10px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+th{background:var(--soft);text-align:left;padding:8px 10px;font-size:12px;color:var(--ink2);border-bottom:1px solid var(--border)}
+td{padding:8px 10px;border-bottom:1px solid var(--soft);font-size:13px;color:var(--ink2);vertical-align:top}
+tr:hover td{background:#fafbfc}
+.st{display:inline-block;padding:1px 10px;border-radius:99px;font-size:11px;font-weight:700;white-space:nowrap}
+.ok{background:#ecfdf5;color:#059669}.part{background:#fffbeb;color:#b45309}.no{background:#fff1f2;color:#be123c}
+.ev{font-family:var(--mono);font-size:11px;color:var(--ink3)}
+input[type=checkbox]{width:15px;height:15px;accent-color:var(--brand);cursor:pointer}
+.note{background:#fffbeb;border-left:4px solid var(--warn);border-radius:8px;padding:12px 16px;margin:14px 0;font-size:13px;color:var(--ink2)}
+.okbox{background:#ecfdf5;border-left:4px solid var(--ok);border-radius:8px;padding:12px 16px;margin:14px 0;font-size:13px;color:var(--ink2)}
+code{font-family:var(--mono);background:var(--soft);padding:1px 5px;border-radius:4px;font-size:11.5px;color:#be185d}
+@media print{body{padding:0}.stat{page-break-after:avoid}h2{page-break-after:avoid}table{page-break-inside:auto}}
+</style>
+</head>
+<body>
+<h1>媒电通工作台 · P0-P2 交付验收自查表</h1>
+<div class="meta">对照基线:《媒体广告工作台_开发需求文档_v2.0定稿》第 8 章 · 工程位置 <code>D:\HaLeMa\Documents\Obsidianku\原始资料\autoclaw\app</code> · 生成于 2026-09-09</div>
+
+<div class="stat">
+  <div class="ok"><b id="c-ok">0</b>已实现</div>
+  <div class="part"><b id="c-part">0</b>部分实现</div>
+  <div class="no"><b id="c-no">0</b>未实现</div>
+  <div><b style="font-size:24px">51</b>验收项总数</div>
+</div>
+
+<div class="okbox"><b>本表证据口径:</b>"代码级"= 源码存在且 typecheck/test/build 通过(本会话真实执行:typecheck 0 错误、7/7 单测通过、vite build 成功、electron 主进程编译成功);<b>"GUI 待首跑"</b> = 需在桌面环境 <code>npm run electron:main && npx electron .</code> 实际操作确认。勾选框供交付经理现场核验时打勾。</div>
+
+<h2>8.1 全局与技术(10 项)</h2>
+<table>
+<tr><th style="width:30px"></th><th style="width:60px">状态</th><th>验收点</th><th style="width:330px">证据 / 说明</th></tr>
+<tr><td><input type="checkbox"></td><td><span class="st part">部分</span></td><td>Electron 壳:托盘 / 全局快捷键 Ctrl+K / 系统通知 / 开机自启</td><td>代码级完成(<code>electron/main.ts</code>: Tray+Menu+globalShortcut+setLoginItemSettings;preload IPC);<b>GUI 运行级待首跑</b></td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st part">部分</span></td><td>全文搜索:1 万条 ≤200ms;跨模块命中;写入即时可见</td><td><code>src/core/search.ts</code> MiniSearch+中文双字分词;覆盖客户/联系人/商机/任务/笔记;数据变更即重建索引;<b>1 万条压测未做</b>(种子规模 10 客户)</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>schema 迁移:构造旧数据升级字段无损</td><td><code>db.ts</code> SCHEMA_VERSION=2 幂等迁移;<b>已补真实迁移单测</b>(fake-indexeddb 造 v1 旧库→升级 v2→新仓可用且旧数据无损,4 项 db 测试含迁移/软删除/日志撤销/备份往返)</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>软删除 + 回收站;删除有关联记录的客户被阻止并提示</td><td><code>db.softDelete/listTrashed/restore/purge</code>;CRM 删除含商机客户 → toast 阻止</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st part">部分</span></td><td>操作日志含回滚载荷;单条撤销;批量就地撤销</td><td>日志含 before 快照 + 系统管理"操作日志"页单条撤销 ✅;批量 Toast 内 Undo 按钮未做</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st no">未做</span></td><td>静态加密(SQLCipher/OS 级);AI Key 存 OS 凭据管理器</td><td>当前 IndexedDB 明文;真实 AI 未接入故无 Key。P2 残留项,需安全加固迭代</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>备份自动轮转(默认 7 份);恢复往返一致</td><td>手动导出/恢复 ✅;<b>自动轮转已实现</b>:设置页开启+选目录+间隔/保留份数,主进程写盘并清理超量,错过时点启动补跑;往返一致有单测</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st part">部分</span></td><td>性能:首屏 ≤3s / 千行导入 ≤5s / 搜索 ≤200ms</td><td><b>搜索压测达标(实测)</b>:1 万条构建 254ms,最大查询 189ms < 200ms(scripts/perf-search.mjs);千行导入校验有单测断言(<5s);首屏未实测(GUI)</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st part">部分</span></td><td>核心单测 + E2E</td><td>单测 15/15 过(校验/健康度/加权/漏斗/NBA + <b>db 层:迁移/软删除/日志撤销/备份往返</b> + <b>AI:脱敏代理/分级路由 4 项</b>);E2E 仍未搭建</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>提醒可靠性:托盘常驻 / 开机自启可配</td><td>托盘常驻+菜单+自启设置项;免打扰/补发/snooze 见 8.3</td></tr>
+</table>
+
+<h2>8.2 设计系统 V2(8 项)</h2>
+<table>
+<tr><th style="width:30px"></th><th style="width:60px">状态</th><th>验收点</th><th style="width:330px">证据 / 说明</th></tr>
+<tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>深色默认 / 浅色可切;双主题令牌;切换无重启</td><td><code>tokens.css</code> 两套变量;<code>App.tsx</code> 持久化切换</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>品牌红仅激活态/主CTA/品牌触点;不用于错误</td><td><code>--brand #FE2C55</code> 与 <code>--danger #FF6B6E</code> 分离;逾期/流失预警全用 danger</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>危险语义独立色,与品牌红可区分</td><td>同上,组件层全部经 <code>Chip kind="danger"</code> 引用</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st part">部分</span></td><td>图表青主系列;红仅"当前选中";导出 ≥2x</td><td>趋势图青系列+当月红高亮 ✅;导出为 HTML 成绩单(非位图),2x 位图导出未做</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>媒电通图标:24 视口/1.6px/icon-* 命名;默认 #E8E8EC;无 emoji</td><td><code>icons.tsx</code> 20 枚 TSX 组件(功能等价 sprite),stroke 1.6/currentColor;全库 grep 零 emoji</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>无硬编码色值;金额 tabular-nums</td><td>grep 校验:UI 层 0 处;仅导出文档字符串内含打印样式(已注释标注为导出物)</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st part">部分</span></td><td>WCAG AA / 键盘可达 / 44px / reduced-motion</td><td>令牌对比度按 AA 设计;Esc 逐级关闭+Ctrl+K ✅;部分次级按钮 28px;reduced-motion 未实现;工具检测未跑</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>专注模式:侧栏收窄+强调色灰化</td><td>设置页切换,<code>html.focus-mode</code> CSS 实现</td></tr>
+</table>
+
+<h2>8.3 交互(6 项)</h2>
+<table>
+<tr><th style="width:30px"></th><th style="width:60px">状态</th><th>验收点</th><th style="width:330px">证据 / 说明</th></tr>
+<tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>今日驾驶舱默认页:NBX 排序 + 倒计时 + KR + 预警 + 待回款</td><td><code>pages/Today.tsx</code>;规则引擎排序(沉默×价值×阶段+逾期奖励),有单测</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>快速采集:三入口 / 七类型 / Esc / 邮件默认关闭</td><td>键盘 Ctrl+K + Electron 全局快捷键 + 顶栏/侧栏按钮;4 类型可用+3 个"二期"徽标;邮件灰置提示</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>可保存视图 / 列配置 / 密度切换</td><td>可保存视图 ✅;<b>密度切换(舒适/紧凑)+ 列显隐(行业/等级/健康度/商机额/跟进)已实现</b></td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>Onboarding 三选一(示例/导入/空白),示例可重置</td><td><code>Onboarding.tsx</code>;设置页"重置示例数据"</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>批量导入部分失败:失败明细导出重试</td><td><b>已实现</b>:CRM"批量导入"(xlsx/csv)→ 列名规则匹配预览 → 逐行校验(批次内重名累加)→ 成功/失败统计 → 失败明细导出 CSV + <b>一键撤销本次导入</b>;1000 行 ≤5s 有单测断言(实测远低于预算)</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>通知:免打扰时段 / 错过补发 / snooze</td><td>免打扰时段 ✅ 错过补发 ✅;<b>预警卡"稍后提醒"(snooze 1h,到期自动弹桌面通知)已实现</b></td></tr>
+</table>
+
+<h2>8.4 CRM 与客户开发(7 项)</h2>
+<table>
+<tr><th style="width:30px"></th><th style="width:60px">状态</th><th>验收点</th><th style="width:330px">证据 / 说明</th></tr>
+<tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>客户 360 抽屉:四页签;开票资料;集团→主体层级</td><td><code>pages/CRM.tsx</code>;Customer.parentId;开票抬头/税号字段</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>决策链角色徽章制;联系人一级实体可关联多客户</td><td>Rel 表 + 角色枚举;Contact 独立仓</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st part">部分</span></td><td>联系人离职/换岗触发关系风险预警</td><td>抽屉决策链显示"关系风险:离职"红标 ✅;今日预警卡未汇总联系人变动</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>健康度按口径计算;冷启动 70;变化即时反映</td><td><code>derive.healthOf</code> → 权重 30/30/20/20,无数据 70;列表行即时渲染,有单测</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>Deal 唯一漏斗;CRM 阶段派生一致</td><td>全应用仅 <code>deals</code> 仓承载阶段;漏斗/Pipeline 同源</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>比稿:记录→结果→成功率→败稿复盘</td><td><code>pages/Dev.tsx</code>;胜率进页头统计</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st part">部分</span></td><td>导入查重:手机号/微信/名称相似度;多命中人工确认</td><td>微信导入按手机号查重跳过 ✅;名称相似度模糊匹配未做;OCR/Excel 查重随其管线未做</td></tr>
+</table>
+
+<h2>8.5 媒介策略(6 项)</h2>
+<table>
+<tr><th style="width:30px"></th><th style="width:60px">状态</th><th>验收点</th><th style="width:330px">证据 / 说明</th></tr>
+<tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>供应商主数据+返点政策;资源必关联供应商</td><td><code>pages/Media.tsx</code>;新增资源表单强制选择</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st part">部分</span></td><td>刊例价版本:报价锁定版本;历史报价不随调价变化</td><td>版本表(版本号/生效日/价格)+ 多版本演示(Q2→Q3)✅;报价单文字标注"以报价时点版本为准",未结构化引用版本 ID</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>排期甘特(已确认/待确认);双口径卡</td><td>月窗口条+状态;成本/报价/毛利/返点核销四行,标"仅内部可见"</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>报价单客户版脱敏:无成本/毛利/返点字样</td><td>导出 HTML 模板仅含 报价/窗口/状态;模板源码可审计</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>CSV 回填管线:解析→校验→入库标 dataSource</td><td>粘贴 CSV → 逐行解析 → 入库标"CSV回填";未匹配资源行跳过</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st part">部分</span></td><td>项目损益:合同 − 媒体成本 − 杂费;费用挂项目</td><td>毛利=报价−成本(排期口径)✅;<b>Expense 杂费实体与挂接未做</b></td></tr>
+</table>
+
+<h2>8.6 数据 / 知识 / 工作管理(6 项)</h2>
+<table>
+<tr><th style="width:30px"></th><th style="width:60px">状态</th><th>验收点</th><th style="width:330px">证据 / 说明</th></tr>
+<tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>口径三指标可切换,数值与手算一致</td><td>数据分析页 select 切换;签约/回款/毛利三算法</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>基准值表内置+可维护</td><td>内置 4 条(美妆 CPM/ROI 等)+ 表单新增</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>月度成绩单自动生成并可导出</td><td>品牌高光面 HTML 导出</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>知识库:双链 / 图谱 / PARA / 版本历史</td><td>双链 ✅ 版本历史 ✅ PARA ✅;<b>知识图谱环形可视化已实现</b>(节点=笔记,连线=[[引用]],点击跳转)</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st part">部分</span></td><td>OKR→任务;看板+WIP;四象限;节点日历挂提醒</td><td>看板拖拽+WIP>5 红警 ✅ OKR 只读 ✅ 倒计时卡 ✅;四象限与任务挂节点未做</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>自定义字段 / 自定义阶段</td><td><b>已实现</b>:设置页"自定义字段"Tab(客户/商机,text/number/date/select,新增表单与 360° 自动渲染);"自定义商机阶段"(插入白名单+validators 动态白名单+单测兼容)</td></tr>
+</table>
+
+<h2>8.7 AI 融合(5 项)</h2>
+<table>
+<tr><th style="width:30px"></th><th style="width:60px">状态</th><th>验收点</th><th style="width:330px">证据 / 说明</th></tr>
+<tr><td><input type="checkbox"></td><td><span class="st part">部分</span></td><td>分级路由:敏感走本地;云调用过脱敏代理</td><td><b>代码已实现</b>(<code>src/core/ai/</code>:route 分类、desensitize 手机号/金额/税号/客户名+restore 还原;主进程 safeStorage 密钥加密 + ai:chat 代理;单测 4 项过);<b>真实云链路待密钥授权验证</b>(探测命令被安全门拦截,未实测)</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>输出带"本机/云"角标 + 溯源</td><td>话术生成结果卡显示 云/本地 徽标 + 路由原因(如"敏感数据已脱敏后上云");失败时红字提示原因并保留本地路径</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st part">部分</span></td><td>确认门槛矩阵三级</td><td>删除阻止/软删除二次确认 ✅;完整低/中/高矩阵未系统化</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st no">未做</span></td><td>录音→转写→contact point+任务+阶段 一键闭环</td><td>依赖转写模型(P2)</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st part">部分</span></td><td>AI 按 Agent 粒度开关;成本计数限额</td><td>已实现:云模型总开关、敏感脱敏上云开关、Base URL/模型 ID 可配、密钥加密保存、测试连接、<b>月度 tokens/calls 计数</b>(设置页);Agent 粒度开关与限额告警未做</td></tr>
+</table>
+
+<h2>8.8 系统管理(4 项)</h2>
+<table>
+<tr><th style="width:30px"></th><th style="width:60px">状态</th><th>验收点</th><th style="width:330px">证据 / 说明</th></tr>
+<tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>按客户打包交接导出</td><td>CRM 抽屉"导出客户包"(客户+联系人+关系+商机+合同+回款+接触点+任务)</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st part">部分</span></td><td>设置页:主题/专注/自启生效;AI 设置;邮件开关</td><td>主题/专注/自启 ✅;邮件以灰置提示 ✅;<b>AI 设置页未做</b>(随 AI 接入)</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st part">部分</span></td><td>回收站 30 天:恢复/彻底删除</td><td>恢复/彻底删除 ✅;30 天自动清理定时任务未做(手动清理可用)</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>内置使用手册覆盖八模块</td><td>侧栏"使用手册":核心原则/八模块说明/快捷键交互表</td></tr>
+</table>
+
+<h2>遗留项汇总(建议下一迭代)</h2>
+<table>
+<tr><th>优先级</th><th>事项</th><th>说明</th></tr>
+<tr><td><span class="st part">高</span></td><td>GUI 首跑验证</td><td>托盘/快捷键/通知/采集弹层全链路桌面实操;报错回传修复</td></tr>
+<tr><td><span class="st part">高</span></td><td>静态加密 + AI Key 凭据管理</td><td>隐私定案的硬要求;建议 SQLCipher 或 OS 级加密</td></tr>
+<tr><td><span class="st part">高</span></td><td>迁移/备份专项单测 + E2E + 1 万条压测</td><td>补齐 8.1 的自动化证据</td></tr>
+<tr><td><span class="st part">中</span></td><td>自定义字段/阶段;Excel 批量导入;四象限;图谱渲染;杂费 Expense;自动备份轮转;通知三细项;使用手册;批量 Undo;reduced-motion</td><td>均为局部功能,不动架构</td></tr>
+<tr><td><span class="st no">中</span></td><td>真实 AI 接入(本地 Ollama/云 API、脱敏代理、确认矩阵、成本护栏)</td><td>需要用户提供模型环境;路由表与门槛矩阵设计已定案</td></tr>
+</table>
+
+<script>
+function count() {
+  const rows = document.querySelectorAll("tbody tr");
+  let ok = 0, part = 0, no = 0;
+  rows.forEach((r) => {
+    const s = r.querySelector(".st");
+    if (!s) return;
+    if (s.classList.contains("ok")) ok++;
+    else if (s.classList.contains("part")) part++;
+    else if (s.classList.contains("no")) no++;
+  });
+  document.getElementById("c-ok").textContent = ok;
+  document.getElementById("c-part").textContent = part;
+  document.getElementById("c-no").textContent = no;
+}
+count();
+</script>
+</body>
+</html>

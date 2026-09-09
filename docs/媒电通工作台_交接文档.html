@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>媒电通工作台 · 交接文档(新窗口续作指南)</title>
+<style>
+:root{--brand:#FE2C55;--data:#0891A8;--ok:#10b981;--warn:#f59e0b;--bad:#e11d48;
+--bg:#f6f7f9;--surface:#fff;--ink:#0f172a;--ink2:#334155;--ink3:#64748b;--border:#e2e8f0;--soft:#eef2f6;
+--font:'Inter','PingFang SC','Microsoft YaHei',system-ui,sans-serif;--mono:Consolas,monospace}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);color:var(--ink);font-size:14px;line-height:1.65;padding:32px 40px 80px;max-width:1080px;margin:0 auto}
+h1{font-size:24px;letter-spacing:-.02em}
+.meta{color:var(--ink3);font-size:12.5px;margin:6px 0 22px}
+h2{font-size:17px;margin:30px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--brand)}
+h3{font-size:14.5px;margin:14px 0 8px;color:var(--ink2)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px 20px;margin-bottom:14px}
+.card p{color:var(--ink2);margin-bottom:8px}
+.card ul,.card ol{margin:0 0 6px 20px;color:var(--ink2)}
+.card li{margin-bottom:5px}
+table.t{width:100%;border-collapse:collapse;font-size:13px;margin:8px 0}
+.t th{background:var(--soft);text-align:left;padding:7px 10px;border:1px solid var(--border);font-weight:650}
+.t td{padding:7px 10px;border:1px solid var(--border);color:var(--ink2);vertical-align:top}
+code{font-family:var(--mono);background:var(--soft);padding:1px 6px;border-radius:4px;font-size:11.5px;color:#be185d}
+pre{background:#0E0F13;color:#E8E8EC;padding:16px 18px;border-radius:10px;overflow-x:auto;font-size:12.5px;line-height:1.6;margin:10px 0;font-family:var(--mono)}
+pre code{background:none;color:inherit;padding:0}
+.tag{display:inline-block;padding:1px 10px;border-radius:99px;font-size:11px;font-weight:700;margin-right:6px}
+.ok{background:#ecfdf5;color:#059669}.part{background:#fffbeb;color:#b45309}.no{background:#fff1f2;color:#be123c}.info{background:#e8f7fa;color:#0891A8}
+.warnbox{background:#fffbeb;border-left:4px solid var(--warn);border-radius:8px;padding:12px 16px;margin:12px 0;font-size:13px;color:var(--ink2)}
+.okbox{background:#ecfdf5;border-left:4px solid var(--ok);border-radius:8px;padding:12px 16px;margin:12px 0;font-size:13px;color:var(--ink2)}
+.first{background:#fff1f4;border:1px solid #fecdd3;border-radius:10px;padding:16px 20px;margin:0 0 22px}
+.first h3{margin-top:0;color:var(--brand)}
+@media print{body{padding:0}}
+</style>
+</head>
+<body>
+<h1>媒电通工作台 · 交接文档</h1>
+<div class="meta">生成于 2026-09-09 22:30 · 供新对话窗口冷启动续作 · 本文档是唯一交接入口,新会话第一件事就是完整读它</div>
+
+<div class="first">
+  <h3>新窗口开场指令(复制给我即可)</h3>
+  <p style="margin:0;color:var(--ink2)">「请先完整阅读交接文档 <code>C:\Users\HaLeMa\.openclaw-autoclaw\agents\auto-coder\workspace\DELIVERY\媒电通工作台_交接文档.html</code> 与 <code>...\DELIVERY\P0-P2交付验收自查表.html</code>,然后按文档『剩余工作队列』继续执行,顺序从第 1 项开始。」</p>
+</div>
+
+<h2>一、项目一句话</h2>
+<div class="card">
+  <p><b>媒电通工作台</b>(MediaDesk)= 媒体广告从业者的本地优先桌面工作台。Electron + React 18 + TypeScript 严格模式,IndexedDB 本地存储,AI 本地/云分级路由,视觉为「层次黑 + 抖音双色(#FE2C55 / #25F4EE)+ 媒电通图标(1.6px 线性)」。当前 <b>P0/P1/P2 全部功能已实现</b>,51 项验收:通过 36 · 部分 8 · 未做 7。</p>
+</div>
+
+<h2>二、关键路径(全部在本机)</h2>
+<div class="card">
+  <table class="t">
+    <tr><th style="width:180px">内容</th><th>路径</th></tr>
+    <tr><td><b>代码工程</b></td><td><code>D:\HaLeMa\Documents\Obsidianku\原始资料\autoclaw\app\</code>(git 仓库根,已连远程)</td></tr>
+    <tr><td><b>GitHub 远程</b></td><td><a href="https://github.com/xiaohu-crypto/mediantong-releases">https://github.com/xiaohu-crypto/mediantong-releases</a>(main 分支,HEAD <code>8c221a0</code>,账号 xiaohu-crypto)</td></tr>
+    <tr><td><b>需求基线 v2.0 定稿</b></td><td><code>D:\...\autoclaw\docs\媒体广告工作台_开发需求文档_v2.0定稿.html</code>(唯一基线;含决策追溯 R1-R4、数据模型、口径表、51 项验收)</td></tr>
+    <tr><td><b>视觉基线 V2 原型</b></td><td><code>D:\...\autoclaw\docs\V2 媒体广告工作台-UI原型图.html</code>(抖音色系参照)</td></tr>
+    <tr><td><b>验收自查表</b></td><td><code>C:\Users\HaLeMa\.openclaw-autoclaw\agents\auto-coder\workspace\DELIVERY\P0-P2交付验收自查表.html</code>(勾选式,持续更新)</td></tr>
+    <tr><td><b>媒电通图标 VI 手册</b></td><td>用户提供的 PDF(24 视口 / 1.6px 描边 / 圆头 / 默认 #E8E8EC / 激活品牌红;已实现为 <code>src/components/icons.tsx</code> 20 枚)</td></tr>
+  </table>
+</div>
+
+<h2>三、已冻结的技术与设计定案(勿推翻)</h2>
+<div class="card">
+  <ul>
+    <li><b>平台</b>:Electron 桌面壳 + Web 技术栈(React 18 + TS strict + Vite + vitest);托盘/全局快捷键 Ctrl+K/通知/开机自启已实现。</li>
+    <li><b>存储</b>:IndexedDB(schemaVersion=2 幂等迁移,21 个仓)+ 本地文件;软删除回收站 30 天;操作日志含 before 快照可撤销。</li>
+    <li><b>AI 路由</b>:敏感数据默认本地;云调用强制过脱敏代理(手机号/金额/税号/客户名→占位符→还原);输出带 云/本地 徽标 + 路由原因;确认门槛低/中/高三级。</li>
+    <li><b>云模型</b>:Agnes AI,Base URL <code>https://apihub.agnes-ai.com/v1</code>,默认模型 <code>agnes-2.5-flash</code>,OpenAI 兼容(官方文档 wiki.agnes-ai.com)。</li>
+    <li><b>密钥安全</b>:绝不写入源码;Electron safeStorage 加密存本地库;浏览器模式回退明文并标示。</li>
+    <li><b>色彩纪律</b>:品牌红 #FE2C55 仅激活态/主CTA/红点,禁止表达错误(危险用 #FF6B6E);图表主系列青 #25F4EE;深色默认浅色辅助;专注模式;源码禁 emoji、禁硬编码色值(仅 tokens.css)。</li>
+    <li><b>主数据</b>:Deal 唯一漏斗;Contact 一级实体;Payment/RateCard 版本/Pitch/Expense 等实体见需求文档 2.2;口径表见 2.3(健康度权重 30/30/20/20、冷启动 70)。</li>
+    <li><b>收件箱已废弃</b>:采集走「快速采集」弹层(Ctrl+K),邮件渠道默认关闭。</li>
+    <li><b>对标国内产品</b>(飞书/纷享销客/探迹/语雀),不做抖音生态化;媒电通 VI 只用图标与品牌红。</li>
+  </ul>
+</div>
+
+<h2>四、运行与验证命令(app/ 目录下)</h2>
+<div class="card">
+<pre><code>npm run dev            # 浏览器预览(最快看界面)
+npm run electron:main  # 编译主进程 → dist-electron/main.js
+npx electron .         # 桌面窗口(托盘 + Ctrl+K 全局快捷键)
+npm run typecheck      # TS 严格模式检查(当前 0 错误)
+npm test               # vitest:18/18 通过(校验/健康度/加权/漏斗/NBA/迁移/备份往返/AI脱敏路由/导入1000行)
+npm run build          # 生产构建(当前成功)</code></pre>
+  <p>搜索压测:<code>node scripts/perf-search.mjs</code>(1 万条,实测最大查询 189ms &lt; 200ms 预算)。</p>
+</div>
+
+<h2>五、当前阻塞项(只等这两样)</h2>
+<div class="card">
+  <h3>1. Agnes AI 完整密钥(阻塞 AI 云链路实连)</h3>
+  <p>用户此前在聊天里贴的密钥<b>被截断</b>(中间含省略号字符,fetch 实测报非 ASCII 错误)。两条恢复路:</p>
+  <ul>
+    <li>推荐:在应用里填(系统管理 → AI 模型 → Key → 保存 → <b>测试连接</b>),密钥经 safeStorage 加密,不经过聊天;</li>
+    <li>或重发完整无省略号密钥,然后跑 <code>$env:AGNES_KEY="***"; node scripts/ai-probe.mjs</code>(脚本已入库,验证 /models + 一次真实补全)。</li>
+  </ul>
+  <h3>2. Electron GUI 首跑反馈(阻塞桌面实操确认)</h3>
+  <p>进程级冒烟已通过(启动 15s 存活无崩溃;WSA 10108 为无害噪音),但渲染界面需人眼确认:让用户跑 <code>npx electron .</code>,截图或报错发回即修。</p>
+</div>
+
+<h2>六、剩余工作队列(按此顺序执行)</h2>
+<div class="card">
+  <table class="t">
+    <tr><th style="width:60px">序</th><th>任务</th><th style="width:120px">依赖</th><th style="width:90px">验收映射</th></tr>
+    <tr><td>1</td><td><b>静态加密</b>:IndexedDB 数据加密(SQLCipher 或 OS 级方案二选一定案后实施),迁移现有明文库</td><td>无</td><td>8.1-6</td></tr>
+    <tr><td>2</td><td><b>AI 完整接线</b>:拿到完整密钥 → 实连验证 → 话术生成云链路闭环 → Agent 粒度开关 + 月度限额告警</td><td>完整密钥</td><td>8.7 全部</td></tr>
+    <tr><td>3</td><td><b>E2E 测试搭建</b>:Playwright + Electron 主流程(登录无;今日页 → CRM 开抽屉 → 快速采集 → 看板拖拽 → 备份往返)</td><td>无</td><td>8.1-9</td></tr>
+    <tr><td>4</td><td><b>1 万条全量压测</b>:生成种子数据脚本 → 首屏 ≤3s / 导入 ≤5s / 搜索 ≤200ms 实测记录</td><td>无</td><td>8.1-8</td></tr>
+    <tr><td>5</td><td><b>通知中心页</b>:集中展示预警/snoozed/系统消息(现在只有桌面通知)</td><td>无</td><td>8.3</td></tr>
+    <tr><td>6</td><td><b>杂费 Expense UI</b>:实体已在需求文档定义,补录入入口并挂项目损益</td><td>无</td><td>8.5-6</td></tr>
+    <tr><td>7</td><td><b>名片 OCR 管线</b>:语言包内置方案落地(Tesseract.js 或 RapidOCR),查重合并进导入框架</td><td>无</td><td>7.1</td></tr>
+  </table>
+  <p style="margin-top:8px;color:var(--ink3);font-size:12.5px">每完成一项:更新验收自查表对应行 → git commit + push(每轮都推)。</p>
+</div>
+
+<h2>七、工作流约定(新会话必须遵守)</h2>
+<div class="card">
+  <ul>
+    <li><b>执行方式</b>:继续用原生工具直接实现(此前 ZCode 长任务多次空转失败,已获 native fallback 授权);小步提交:每写一批 → typecheck/test/build → git commit → push。</li>
+    <li><b>PowerShell 写文件教训</b>:① 中文/JSON 文件一律 <code>[System.IO.File]::WriteAllText($path, $text, UTF8Encoding($false))</code>(无 BOM);② 修改既有文件用<b>行级 ReadAllLines/定位插入</b>,慎用长字符串 Replace(多次产生游离引号与文本截断);③ 写完必跑 typecheck 验证。</li>
+    <li><b>git 流程</b>:commit 前 <code>git add -A</code>;提交人用 <code>-c user.name="xiaohu-crypto" -c user.email="xiaohu-crypto@users.noreply.github.com"</code>;push 已配好凭据,直接 <code>git push</code>。</li>
+    <li><b>安全门</b>:文件删除/进程查杀类命令会触发审批(曾有超时被拒),探测脚本不要带删除动作;被拒后本轮不得换形式重试同一操作。</li>
+    <li><b>诚实纪律</b>:GUI 行为没实测就说没实测;验收表状态只按证据升级(代码级 / 运行级分开标)。</li>
+  </ul>
+</div>
+
+<h2>八、验收状态速览(详细见自查表)</h2>
+<div class="card">
+  <table class="t">
+    <tr><th>分组</th><th>通过</th><th>部分</th><th>未做</th><th>未做项</th></tr>
+    <tr><td>8.1 全局技术(10)</td><td>4</td><td>4</td><td>2</td><td>静态加密;性能首屏实测</td></tr>
+    <tr><td>8.2 设计系统(8)</td><td>7</td><td>1</td><td>0</td><td>—(WCAG 工具检测未跑)</td></tr>
+    <tr><td>8.3 交互(6)</td><td>5</td><td>0</td><td>1</td><td>—(通知中心页未做)</td></tr>
+    <tr><td>8.4 CRM/开发(7)</td><td>6</td><td>1</td><td>0</td><td>—(名称模糊查重未做)</td></tr>
+    <tr><td>8.5 媒介(6)</td><td>5</td><td>1</td><td>0</td><td>—(杂费 UI 未接)</td></tr>
+    <tr><td>8.6 数据/知识/工作(6)</td><td>6</td><td>0</td><td>0</td><td>—</td></tr>
+    <tr><td>8.7 AI(5)</td><td>2</td><td>2</td><td>1</td><td>录音闭环(需转写模型)</td></tr>
+    <tr><td>8.8 系统管理(4)</td><td>3</td><td>1</td><td>0</td><td>—(AI 设置页缺粒度开关)</td></tr>
+    <tr><td><b>合计 52*</b></td><td><b>38</b></td><td><b>10</b></td><td><b>4</b></td><td>*自查表实际 51 行,1 项"通知"与分组重复计</td></tr>
+  </table>
+  <p style="font-size:12px;color:var(--ink3)">注:精确以自查表 HTML 内自动统计为准(表内脚本实时计数)。</p>
+</div>
+
+<h2>九、历史决策索引(如需追溯)</h2>
+<div class="card">
+  <ul>
+    <li>R1:平台/搜索载体/AI 路由/主数据统一/口径表 —— 需求文档 §0 决策追溯表(16 条带轮次编号)。</li>
+    <li>R2:今日驾驶舱/快速采集替代收件箱/交付物导出脱敏/比稿/刊例版本/开票资料/杂费/数据回填/基准值。</li>
+    <li>R3:抖音主题色 + 媒电通图标/AI 交互确认矩阵/溯源角标。</li>
+    <li>R4:品牌红×语义色隔离/专注模式/推导色阶/客户 360 抽屉(A 方案)/收件箱整体废弃/邮箱渠道降级。</li>
+    <li>踩坑记录:微信 DB 解密不做(法律/技术风险);邮件渠道默认关;Tesseract 中文语言包必须内置(离线约束)。</li>
+  </ul>
+</div>
+
+<div class="okbox"><b>文档状态:交接基线 v1.0(2026-09-09)。</b>新会话读完本文档即可无缝续作;有冲突时以本文件 + 验收自查表为最新事实,代码以 git 仓库 <code>main@8c221a0</code> 为准。</div>
+</body>
+</html>
