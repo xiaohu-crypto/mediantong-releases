@@ -1,8 +1,9 @@
 import { app, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, nativeImage, safeStorage, dialog } from "electron";
-import { mkdir, readdir, writeFile, unlink } from "node:fs/promises";
+import { mkdir, readdir, writeFile, unlink, readFile } from "node:fs/promises";
 import path2 from "node:path";
 const authOf = (k: string) => ("Bea" + "rer ") + k;
 import path from "node:path";
+import { randomBytes } from "node:crypto";
 
 let win: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -107,6 +108,24 @@ ipcMain.handle("backup:write", async (_e, args: { dir: string; content: string; 
     for (const f of files.slice(Math.max(1, args.keep))) { await unlink(path2.join(args.dir, f)); removed++; }
     return { ok: true, file, removed };
   } catch (e) { return { ok: false, error: String(e) }; }
+});
+// ===== 静态加密:数据密钥生成/解封(safeStorage/DPAPI 保护,密文落 userData/vault.key) =====
+ipcMain.handle("vault:ensure", async () => {
+  try {
+    if (!safeStorage.isEncryptionAvailable()) return { ok: false, reason: "safeStorage 不可用" };
+    const file = path2.join(app.getPath("userData"), "vault.key");
+    let raw = "";
+    try {
+      const wrapped = await readFile(file);
+      raw = safeStorage.decryptString(wrapped);
+    } catch {
+      raw = randomBytes(32).toString("base64");
+      await writeFile(file, safeStorage.encryptString(raw));
+    }
+    return { ok: true, raw };
+  } catch (e) {
+    return { ok: false, reason: String(e) };
+  }
 });
 app.on("window-all-closed", () => {
   // 托盘常驻:不退出,仅隐藏窗口语义;真正退出走托盘菜单

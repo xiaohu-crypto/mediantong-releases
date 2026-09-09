@@ -3,6 +3,7 @@ import { db } from "../db/db";
 import { seedIfEmpty } from "../data/seed";
 import { DEFAULT_AI_CONFIG, getAiConfig, loadAiKey, saveAiKey, saveAiConfig, type AiConfig } from "../core/ai/client";
 import { getDnd, type Dnd } from "../core/notify";
+import { ensureVault, getVaultStatus, type VaultStatus } from "../core/vault";
 import { Btn, Chip, Field, useToast } from "../ui/common";
 import { IconRefresh } from "../components/icons";
 
@@ -24,6 +25,7 @@ export default function SettingsPage(props: { theme: "dark" | "light"; setTheme:
   const [usage, setUsage] = useState<{ month: string; calls: number; tokens: number } | null>(null);
   const [ab, setAb] = useState<{ enabled: boolean; intervalHours: number; dir: string; keep: number; lastAt: number }>({ enabled: false, intervalHours: 24, dir: "", keep: 7, lastAt: 0 });
   const [dnd, setDnd] = useState<Dnd>({ enabled: false, start: "22:00", end: "08:00" });
+  const [vs, setVs] = useState<VaultStatus>({ mode: "plain", reason: "检测中…" });
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -37,6 +39,8 @@ export default function SettingsPage(props: { theme: "dark" | "light"; setTheme:
       setKeyState({ has: !!k.key, encrypted: k.encrypted });
       setUsage(await db.getSetting("aiUsage", null));
       setAb(await db.getSetting("autoBackup", { enabled: false, intervalHours: 24, dir: "", keep: 7, lastAt: 0 }));
+      await ensureVault();
+      setVs(getVaultStatus());
       setDnd(await getDnd());
     })();
   }, [tab]);
@@ -102,6 +106,9 @@ export default function SettingsPage(props: { theme: "dark" | "light"; setTheme:
           </div>
           <div className="alert-line"><span className="txt">系统通知</span><Chip kind="green">已开启(P0)</Chip></div>
           <div className="alert-line"><span className="txt">邮件导入渠道</span><Chip gray>默认关闭(二期可开)</Chip></div>
+          <div className="alert-line"><span className="txt">静态加密(IndexedDB 落盘,密钥经 OS 凭据保护)</span>
+            {vs.mode === "os-protected" ? <Chip kind="green">已启用 · AES-256-GCM</Chip> : <Chip gray>{vs.reason}</Chip>}
+          </div>
 
           <div className="h-row" style={{ marginTop: 18 }}>
             <span className="h-title sm">备份与恢复</span>

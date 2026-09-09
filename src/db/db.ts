@@ -1,4 +1,5 @@
 import { openDB, type IDBPDatabase } from "idb";
+import { ensureVault, encryptRecord, decryptRecord, vaultHasKey } from "../core/vault";
 
 /** 仓库名清单(schema v1) */
 export const STORES = [
@@ -48,16 +49,40 @@ export const migrations: { version: number; up: (db: IDBPDatabase) => Promise<vo
 
 async function getDB(): Promise<IDBPDatabase> {
   if (!dbPromise) {
-    dbPromise = openDB(DB_NAME, SCHEMA_VERSION, {
-      upgrade: async (db, oldVersion, _newVersion, tx) => {
-        for (const m of migrations) {
-          if (m.version > oldVersion) await m.up(db);
-        }
-        void tx;
-      },
-    });
+    await ensureVault(); // 密钥解析须在 openDB 前(版本 change 事务内不可等待非 IDB 异步)
+    dbPromise = (async () => {
+      const d = await openDB(DB_NAME, SCHEMA_VERSION, {
+        upgrade: async (db, oldVersion) => {
+          for (const m of migrations) {
+            if (m.version > oldVersion) await m.up(db);
+          }
+        },
+      });
+      await encryptPlaintextLegacy(d); // 一次性静态加密迁移(幂等,见函数注释)
+      return d;
+    })();
   }
   return dbPromise;
+}
+
+/**
+ * 静态加密数据迁移:存量明文库 → 全量加密(验收 8.1-6「迁移现有明文库」)。
+ * 不能放在 versionchange 升级事务里:await WebCrypto 期间事务会自动提交;
+ * 故开库后独立执行,逐仓读写各自独立事务,以 meta["enc:atRest"]=v1 为幂等标记,
+ * 中断可续(已加密记录带 __enc 标记自动跳过)。
+ */
+async function encryptPlaintextLegacy(d: IDBPDatabase): Promise<void> {
+  if (!vaultHasKey()) return;
+  const flagRec = await decryptRecord<{ value?: string } | undefined>(await d.get("meta", "enc:atRest"));
+  if (flagRec?.value === "v1") return;
+  for (const s of STORES) {
+    const rows = (await d.getAll(s)) as { id: string; __enc?: number }[];
+    for (const row of rows) {
+      if (row.__enc) continue;
+      await d.put(s, await encryptRecord(row));
+    }
+  }
+  await d.put("meta", await encryptRecord({ id: "enc:atRest", value: "v1" }));
 }
 
 function nowId(): string {
@@ -67,40 +92,41 @@ function nowId(): string {
 export const db = {
   async put<T extends { id: string }>(store: StoreName, value: T, logWhat?: string): Promise<T> {
     const d = await getDB();
-    const before = await d.get(store, value.id);
+    const before = await decryptRecord(await d.get(store, value.id));
     const rec = { ...value, updatedAt: Date.now() } as T & { updatedAt: number };
-    await d.put(store, rec);
+    await putRec(d, store, rec);
     if (logWhat) await log(d, store, value.id, logWhat, before ?? null);
     return rec;
   },
 
   async get<T>(store: StoreName, id: string): Promise<T | undefined> {
     const d = await getDB();
-    return d.get(store, id) as Promise<T | undefined>;
+    const raw = await d.get(store, id);
+    return raw === undefined ? undefined : await decryptRecord<T>(raw);
   },
 
   async getAll<T>(store: StoreName): Promise<T[]> {
     const d = await getDB();
-    return d.getAll(store) as Promise<T[]>;
+    return getAllDec<T>(d, store);
   },
 
   /** 软删除:打 deletedAt 标记,主列表应过滤 */
   async softDelete(store: StoreName, id: string, what: string): Promise<void> {
     const d = await getDB();
-    const rec = (await d.get(store, id)) as { id: string; deletedAt?: number } | undefined;
+    const rec = await decryptRecord<{ id: string; deletedAt?: number } | undefined>(await d.get(store, id));
     if (!rec) return;
     const before = { ...rec };
     rec.deletedAt = Date.now();
-    await d.put(store, rec);
+    await putRec(d, store, rec);
     await log(d, store, id, what, before);
   },
 
   async restore(store: StoreName, id: string): Promise<void> {
     const d = await getDB();
-    const rec = (await d.get(store, id)) as { deletedAt?: number } | undefined;
+    const rec = await decryptRecord<{ deletedAt?: number } | undefined>(await d.get(store, id));
     if (!rec) return;
     delete rec.deletedAt;
-    await d.put(store, rec);
+    await putRec(d, store, rec);
   },
 
   async purge(store: StoreName, id: string): Promise<void> {
@@ -115,7 +141,7 @@ export const db = {
     const titleFields = ["name", "title", "what"] as const;
     for (const s of STORES) {
       if (s === "meta" || s === "settings") continue;
-      const rows = (await d.getAll(s)) as { id: string; deletedAt?: number }[];
+      const rows = await getAllDec<{ id: string; deletedAt?: number }>(d, s);
       for (const r of rows) {
         if (r.deletedAt) {
           const any = r as unknown as Record<string, unknown>;
@@ -129,34 +155,34 @@ export const db = {
 
   async logOp(entry: Omit<OpLog, "id" | "ts" | "who"> & { who?: string }): Promise<void> {
     const d = await getDB();
-    await d.put("operationLogs", { id: nowId(), ts: Date.now(), who: entry.who ?? "本地用户", ...entry });
+    await putRec(d, "operationLogs", { id: nowId(), ts: Date.now(), who: entry.who ?? "本地用户", ...entry });
   },
 
   /** 撤销:按日志 before 快照恢复实体 */
   async undoLog(logId: string): Promise<void> {
     const d = await getDB();
-    const entry = (await d.get("operationLogs", logId)) as OpLog | undefined;
+    const entry = await decryptRecord<OpLog | undefined>(await d.get("operationLogs", logId));
     if (!entry) throw new Error("日志不存在");
     if (!entry.before) throw new Error("该操作无回滚快照(新建操作请用删除)");
-    await d.put(entry.entityType as StoreName, entry.before);
+    await putRec(d, entry.entityType as StoreName, entry.before);
   },
 
   async getSetting<T>(key: string, fallback: T): Promise<T> {
     const d = await getDB();
-    const rec = (await d.get("settings", key)) as { id: string; value: T } | undefined;
+    const rec = await decryptRecord<{ id: string; value: T } | undefined>(await d.get("settings", key));
     return rec ? rec.value : fallback;
   },
 
   async setSetting<T>(key: string, value: T): Promise<void> {
     const d = await getDB();
-    await d.put("settings", { id: key, value });
+    await putRec(d, "settings", { id: key, value });
   },
 
   /** 备份导出:全部仓 JSON */
   async dumpAll(): Promise<Record<string, unknown[]>> {
     const d = await getDB();
     const out: Record<string, unknown[]> = {};
-    for (const s of STORES) out[s] = await d.getAll(s);
+    for (const s of STORES) out[s] = await getAllDec<unknown>(d, s);
     return out;
   },
 
@@ -166,7 +192,7 @@ export const db = {
     for (const s of STORES) {
       if (!dump[s]) continue;
       await d.clear(s);
-      for (const row of dump[s]) await d.put(s, row);
+      for (const row of dump[s]) await putRec(d, s, row);
     }
   },
 
@@ -176,8 +202,18 @@ export const db = {
   },
 };
 
+/** 门面层加解密通道:写入前加密,读取后解密(静态加密唯一入口,别处不得直开 DB) */
+async function putRec(d: IDBPDatabase, store: StoreName, rec: unknown): Promise<void> {
+  await d.put(store, await encryptRecord(rec as { id: string }));
+}
+
+async function getAllDec<T>(d: IDBPDatabase, store: StoreName): Promise<T[]> {
+  const rows = (await d.getAll(store)) as unknown[];
+  return Promise.all(rows.map((r) => decryptRecord<T>(r)));
+}
+
 async function log(d: IDBPDatabase, store: string, entityId: string, what: string, before: unknown): Promise<void> {
-  await d.put("operationLogs", {
+  await putRec(d, "operationLogs", {
     id: nowId(), ts: Date.now(), who: "本地用户",
     what, entityType: store, entityId, before,
   });

@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld("mta", {
   aiLoadKey: (rec: { enc?: string; plain?: string }) => ipcRenderer.invoke("ai:loadKey", rec),
   aiChat: (args: { baseUrl: string; apiKey: string; model: string; messages: { role: string; content: string }[] }) =>
     ipcRenderer.invoke("ai:chat", args),
+  vaultEnsure: () => ipcRenderer.invoke("vault:ensure"),
   backupPickDir: () => ipcRenderer.invoke("backup:pickDir"),
   backupWrite: (args: { dir: string; content: string; keep: number }) => ipcRenderer.invoke("backup:write", args),
 });
