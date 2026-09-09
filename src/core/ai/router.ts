@@ -9,10 +9,11 @@ export function classify(task: string): Sensitivity {
   return SENSITIVE_KEYWORDS.some((k) => task.includes(k)) ? "sensitive" : "normal";
 }
 
-export interface RouteOptions { cloudEnabled: boolean; allowSensitiveCloud: boolean }
+export interface RouteOptions { cloudEnabled: boolean; allowSensitiveCloud: boolean; agentEnabled?: boolean }
 export interface RouteDecision { target: RouteTarget; reason: string }
 
 export function route(task: string, o: RouteOptions): RouteDecision {
+  if (o.agentEnabled === false) return { target: "local", reason: "该 AI Agent 已关闭(系统管理 → AI 设置)" };
   const s = classify(task);
   if (!o.cloudEnabled) return { target: "local", reason: "云模型总开关未开启" };
   if (s === "sensitive" && !o.allowSensitiveCloud) return { target: "local", reason: "敏感数据默认本地(可在 AI 设置允许脱敏后上云)" };

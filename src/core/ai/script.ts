@@ -14,7 +14,7 @@ const LOCAL_FALLBACK = (stage: string, silent: number): string =>
 
 export async function genScript(d: Deal, c: Customer, cps: ContactPoint[]): Promise<ScriptResult> {
   const cfg = await getAiConfig();
-  const decision = route("客户资料-话术草稿", { cloudEnabled: cfg.cloudEnabled, allowSensitiveCloud: cfg.allowSensitiveCloud });
+  const decision = route("客户资料-话术草稿", { cloudEnabled: cfg.cloudEnabled, allowSensitiveCloud: cfg.allowSensitiveCloud, agentEnabled: cfg.agents?.script !== false });
   const silent = daysSince(d.lastTouchAt);
   const last = cps.filter((p) => p.customerId === c.id).sort((a, b) => b.time - a.time)[0];
 

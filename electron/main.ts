@@ -72,6 +72,7 @@ app.whenReady().then(() => {
       return rec.plain ?? "";
     } catch { return ""; }
   });
+  ipcMain.handle("ai:envKey", () => process.env.AGNES_KEY ?? "");
   ipcMain.handle("ai:chat", async (_e, args: { baseUrl: string; apiKey: string; model: string; messages: { role: string; content: string }[] }) => {
     const url = args.baseUrl.replace(/\/+$/, "") + "/chat/completions";
     try {

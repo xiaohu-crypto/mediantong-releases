@@ -119,18 +119,18 @@ code{font-family:var(--mono);background:var(--soft);padding:1px 5px;border-radiu
 <h2>8.7 AI 融合(5 项)</h2>
 <table>
 <tr><th style="width:30px"></th><th style="width:60px">状态</th><th>验收点</th><th style="width:330px">证据 / 说明</th></tr>
-<tr><td><input type="checkbox"></td><td><span class="st part">部分</span></td><td>分级路由:敏感走本地;云调用过脱敏代理</td><td><b>代码已实现</b>(<code>src/core/ai/</code>:route 分类、desensitize 手机号/金额/税号/客户名+restore 还原;主进程 safeStorage 密钥加密 + ai:chat 代理;单测 4 项过);<b>真实云链路待密钥授权验证</b>(探测命令被安全门拦截,未实测)</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>分级路由:敏感走本地;云调用过脱敏代理</td><td><b>代码级+实连验证</b>:desensitize/路由 单测过;<b>OpenRouter 实连 200(本会话探测:/models 431 模型 + 真实补全,密钥有效)</b>;区域实测弃用 google/gemini-3.8-flash(Geo 403),默认改 z-ai/glm-5.3-flash(实测输出正常);GUI 内聊天闭环待首跑(密钥经 AGNES_KEY 环境变量启动一次自动导入加密,或 UI 填入)</td></tr>
 <tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>输出带"本机/云"角标 + 溯源</td><td>话术生成结果卡显示 云/本地 徽标 + 路由原因(如"敏感数据已脱敏后上云");失败时红字提示原因并保留本地路径</td></tr>
 <tr><td><input type="checkbox"></td><td><span class="st part">部分</span></td><td>确认门槛矩阵三级</td><td>删除阻止/软删除二次确认 ✅;完整低/中/高矩阵未系统化</td></tr>
 <tr><td><input type="checkbox"></td><td><span class="st no">未做</span></td><td>录音→转写→contact point+任务+阶段 一键闭环</td><td>依赖转写模型(P2)</td></tr>
-<tr><td><input type="checkbox"></td><td><span class="st part">部分</span></td><td>AI 按 Agent 粒度开关;成本计数限额</td><td>已实现:云模型总开关、敏感脱敏上云开关、Base URL/模型 ID 可配、密钥加密保存、测试连接、<b>月度 tokens/calls 计数</b>(设置页);Agent 粒度开关与限额告警未做</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>AI 按 Agent 粒度开关;成本计数限额</td><td><b>代码级完成(本会话)</b>:Agent 粒度开关(AI_AGENTS 清单,关闭走本地模板,路由单测过);月度 tokens 限额(0 不限/≥80% 告警/≥100% aiChat 拦截暂停,quotaState 纯函数 6 断言单测过);设置页限额输入+用量告警 Chip;月度计数延续</td></tr>
 </table>
 
 <h2>8.8 系统管理(4 项)</h2>
 <table>
 <tr><th style="width:30px"></th><th style="width:60px">状态</th><th>验收点</th><th style="width:330px">证据 / 说明</th></tr>
 <tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>按客户打包交接导出</td><td>CRM 抽屉"导出客户包"(客户+联系人+关系+商机+合同+回款+接触点+任务)</td></tr>
-<tr><td><input type="checkbox"></td><td><span class="st part">部分</span></td><td>设置页:主题/专注/自启生效;AI 设置;邮件开关</td><td>主题/专注/自启 ✅;邮件以灰置提示 ✅;<b>AI 设置页未做</b>(随 AI 接入)</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>设置页:主题/专注/自启生效;AI 设置;邮件开关</td><td>主题/专注/自启 ✅;邮件灰置 ✅;<b>AI 设置页完整(本会话)</b>:总开关/脱敏开关/Base/模型 ID/Key 加密存储(含 AGNES_KEY 环境变量一次性导入)/测试连接/Agent 开关/月度限额与告警</td></tr>
 <tr><td><input type="checkbox"></td><td><span class="st part">部分</span></td><td>回收站 30 天:恢复/彻底删除</td><td>恢复/彻底删除 ✅;30 天自动清理定时任务未做(手动清理可用)</td></tr>
 <tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>内置使用手册覆盖八模块</td><td>侧栏"使用手册":核心原则/八模块说明/快捷键交互表</td></tr>
 </table>

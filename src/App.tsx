@@ -31,6 +31,7 @@ declare global {
       getLoginItem: () => Promise<boolean>;
       aiSaveKey: (plain: string) => Promise<{ enc?: string; plain?: string }>;
       aiLoadKey: (rec: { enc?: string; plain?: string }) => Promise<string>;
+      aiEnvKey: () => Promise<string>;
       aiChat: (args: { baseUrl: string; apiKey: string; model: string; messages: { role: string; content: string }[] }) =>
         Promise<{ ok: boolean; content?: string; error?: string; status?: number; usage?: { total_tokens?: number } }>;
       backupPickDir: () => Promise<string | null>;

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { db } from "../db/db";
 import { seedIfEmpty } from "../data/seed";
-import { DEFAULT_AI_CONFIG, getAiConfig, loadAiKey, saveAiKey, saveAiConfig, type AiConfig } from "../core/ai/client";
+import { AI_AGENTS, DEFAULT_AI_CONFIG, getAiConfig, loadAiKey, saveAiKey, saveAiConfig, type AiConfig } from "../core/ai/client";
+import { quotaState } from "../core/ai/quota";
 import { getDnd, type Dnd } from "../core/notify";
 import { ensureVault, getVaultStatus, type VaultStatus } from "../core/vault";
 import { Btn, Chip, Field, useToast } from "../ui/common";
@@ -19,7 +20,7 @@ export default function SettingsPage(props: { theme: "dark" | "light"; setTheme:
   const [autostart, setAutostart] = useState(false);
   const [aiCfg, setAiCfg] = useState<AiConfig>(DEFAULT_AI_CONFIG);
   const [keyInput, setKeyInput] = useState("");
-  const [keyState, setKeyState] = useState<{ has: boolean; encrypted: boolean }>({ has: false, encrypted: false });
+  const [keyState, setKeyState] = useState<{ has: boolean; encrypted: boolean; fromEnv?: boolean }>({ has: false, encrypted: false });
   const [aiTesting, setAiTesting] = useState(false);
   const [aiResult, setAiResult] = useState<string | null>(null);
   const [usage, setUsage] = useState<{ month: string; calls: number; tokens: number } | null>(null);
@@ -36,7 +37,7 @@ export default function SettingsPage(props: { theme: "dark" | "light"; setTheme:
       if (window.mta) setAutostart(await window.mta.getLoginItem());
       setAiCfg(await getAiConfig());
       const k = await loadAiKey();
-      setKeyState({ has: !!k.key, encrypted: k.encrypted });
+      setKeyState({ has: !!k.key, encrypted: k.encrypted, fromEnv: k.fromEnv });
       setUsage(await db.getSetting("aiUsage", null));
       setAb(await db.getSetting("autoBackup", { enabled: false, intervalHours: 24, dir: "", keep: 7, lastAt: 0 }));
       await ensureVault();
@@ -150,18 +151,29 @@ export default function SettingsPage(props: { theme: "dark" | "light"; setTheme:
           </div>
           <div className="alert-line"><span className="txt">错过补发</span><Chip kind="green">已启用(启动时检查,超 8 小时自动补一条汇总)</Chip></div>
 
-          <div className="h-row" style={{ marginTop: 20 }}><span className="h-title sm">AI 模型(Agnes AI · 云)</span></div>
+          <div className="h-row" style={{ marginTop: 20 }}><span className="h-title sm">AI 模型(OpenRouter · 云)</span></div>
           <div className="alert-line"><span className="txt">云模型总开关</span>
             <Btn kind={aiCfg.cloudEnabled ? "data" : "ghost"} sm onClick={() => { const v = !aiCfg.cloudEnabled; setAiCfg({ ...aiCfg, cloudEnabled: v }); void saveAiConfig({ ...aiCfg, cloudEnabled: v }); show(v ? "云模型已开启" : "云模型已关闭(全部走本地)"); }}>{aiCfg.cloudEnabled ? "已开启" : "已关闭"}</Btn>
           </div>
           <div className="alert-line"><span className="txt">敏感数据脱敏后允许上云</span>
             <Btn kind={aiCfg.allowSensitiveCloud ? "data" : "ghost"} sm onClick={() => { const v = !aiCfg.allowSensitiveCloud; setAiCfg({ ...aiCfg, allowSensitiveCloud: v }); void saveAiConfig({ ...aiCfg, allowSensitiveCloud: v }); }}>{aiCfg.allowSensitiveCloud ? "允许(默认,强制脱敏)" : "不允许(纯本地)"}</Btn>
           </div>
-          <div className="field-row">
+          <div className="alert-line"><span className="txt">Agent 粒度开关(关闭后该能力走本地模板)</span>
+            {AI_AGENTS.map((a) => (
+              <span key={a.id} style={{ display: "inline-flex", gap: 8, alignItems: "center", marginLeft: 12 }}>
+                <span style={{ fontSize: "var(--text-xs)" }}>{a.label}</span>
+                <Btn kind={(aiCfg.agents?.[a.id] ?? true) ? "data" : "ghost"} sm onClick={() => { const on = aiCfg.agents?.[a.id] ?? true; const v = { ...aiCfg, agents: { ...aiCfg.agents, [a.id]: !on } }; setAiCfg(v); void saveAiConfig(v); }}>{(aiCfg.agents?.[a.id] ?? true) ? "已开启" : "已关闭"}</Btn>
+              </span>
+            ))}
+          </div>
+          <div className="alert-line"><span className="txt">月度 tokens 限额(0=不限;≥80% 告警,≥100% 暂停云调用)</span>
+            <input className="inp num" style={{ width: 120, minHeight: 28 }} value={String(aiCfg.monthlyTokenLimit ?? 0)} onChange={(e) => { const v = { ...aiCfg, monthlyTokenLimit: Math.max(0, Number(e.target.value) || 0) }; setAiCfg(v); void saveAiConfig(v); }} />
+          </div>
+<div className="field-row">
             <Field label="API Base URL"><input className="inp" style={{ width: "100%" }} value={aiCfg.baseUrl} onChange={(e) => setAiCfg({ ...aiCfg, baseUrl: e.target.value })} onBlur={() => { void saveAiConfig(aiCfg); }} /></Field>
             <Field label="模型 ID"><input className="inp" style={{ width: "100%" }} value={aiCfg.model} onChange={(e) => setAiCfg({ ...aiCfg, model: e.target.value })} onBlur={() => { void saveAiConfig(aiCfg); }} /></Field>
           </div>
-          <div className="alert-line"><span className="txt">API Key(当前:{keyState.has ? (keyState.encrypted ? "已加密存储" : "明文(浏览器回退)") : "未配置"})</span></div>
+          <div className="alert-line"><span className="txt">API Key(当前:{keyState.has ? (keyState.encrypted ? (keyState.fromEnv ? "已加密存储(自 AGNES_KEY 环境变量导入)" : "已加密存储") : "明文(浏览器回退)") : "未配置"})</span></div>
           <div className="field-row">
             <Field label={keyState.has ? "更换 Key" : "填入 Key"}>
               <input className="inp" type="password" style={{ width: "100%" }} value={keyInput} onChange={(e) => setKeyInput(e.target.value)} placeholder="sk-…" />
@@ -181,7 +193,7 @@ export default function SettingsPage(props: { theme: "dark" | "light"; setTheme:
             </Field>
           </div>
           {aiResult ? <p style={{ fontSize: "var(--text-xs)", color: aiResult.startsWith("连接成功") ? "var(--success)" : "var(--danger)" }}>{aiResult}</p> : null}
-          {usage ? <p className="muted" style={{ fontSize: "var(--text-xs)" }}>本月云调用:{usage.calls} 次 / {usage.tokens} tokens(月度限额告警属后续迭代)</p> : null}
+          {usage ? (() => { const q = quotaState(usage, aiCfg.monthlyTokenLimit ?? 0); return (<p className="muted" style={{ fontSize: "var(--text-xs)" }}>本月云调用:{usage.calls} 次 / {usage.tokens} tokens{aiCfg.monthlyTokenLimit ? ` · 限额 ${aiCfg.monthlyTokenLimit}` : ""}{q.level !== "ok" ? <span style={{ marginLeft: 6 }}><Chip kind={q.level === "exceeded" ? "danger" : "data"}>{q.level === "exceeded" ? "已达限额,云调用暂停" : "接近限额(≥80%)"}</Chip></span> : null}</p>); })() : null}
 
           <div className="h-row" style={{ marginTop: 14 }}><span className="h-title sm">数据打包交接(按客户)</span></div>
           <CustomerPack customers={props.customers} onDone={show} />
