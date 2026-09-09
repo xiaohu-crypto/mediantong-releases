@@ -8,3 +8,4 @@ test-results/
 playwright-report/
 debug-*.mjs
 bench-xlsx.mjs
+release/

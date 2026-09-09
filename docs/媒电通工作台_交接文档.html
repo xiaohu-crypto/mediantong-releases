@@ -45,7 +45,7 @@ pre code{background:none;color:inherit;padding:0}
 <li><b>标题栏</b>:融合深色标题栏为默认(titleBarStyle hidden + 深色 overlay + 顶栏拖拽区),原生菜单已移除;系统管理可切回「系统原生」(写 window-mode.json,重启用)。</li>
 <li><b>侧栏成熟化</b>:快速采集独立 CTA(Ctrl K kbd 徽标)/激活态品牌红指示条/系统组沉底/无内部术语;图标:今日=IconToday,手册=IconFlag。</li>
 <li><b>导入管线</b>:CSV 原生文本解析(XLSX.read 在渲染进程对大 CSV 挂起,实测);xlsx 才走 XLSX;写入走 <code>db.putMany</code> 批量事务(千行/1000 行分块);整批单条操作日志;parseRows 去重 O(n)。</li>
-<li><b>色彩纪律/主数据/口径/收件箱废弃/对标国内产品</b>:延续 v1 交接,全部不变。</li>
+<li><b>色彩纪律/主数据/口径/收件箱废弃/对标国内产品</b>:延续 v1 交接,全部不变。</li><li><b>分发:electron-builder 打包 NSIS 安装版 + 便携版(release/,~80MB,未签名→SmartScreen 需「仍要运行」);发新版:npm run dist;其它电脑 Win10/11 x64 直接安装,无需 Node;数据每台本机独立(vault.key 每机生成)。</b></li>
 </ul></div>
 
 <h2>四、运行与验证(app/ 下)</h2>
