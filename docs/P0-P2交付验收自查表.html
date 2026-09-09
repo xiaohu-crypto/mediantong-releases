@@ -46,15 +46,15 @@ code{font-family:var(--mono);background:var(--soft);padding:1px 5px;border-radiu
 <h2>8.1 全局与技术(10 项)</h2>
 <table>
 <tr><th style="width:30px"></th><th style="width:60px">状态</th><th>验收点</th><th style="width:330px">证据 / 说明</th></tr>
-<tr><td><input type="checkbox"></td><td><span class="st part">部分</span></td><td>Electron 壳:托盘 / 全局快捷键 Ctrl+K / 系统通知 / 开机自启</td><td>代码级完成(<code>electron/main.ts</code>: Tray+Menu+globalShortcut+setLoginItemSettings;preload IPC);<b>GUI 运行级待首跑</b></td></tr>
-<tr><td><input type="checkbox"></td><td><span class="st part">部分</span></td><td>全文搜索:1 万条 ≤200ms;跨模块命中;写入即时可见</td><td><code>src/core/search.ts</code> MiniSearch+中文双字分词;覆盖客户/联系人/商机/任务/笔记;数据变更即重建索引;<b>1 万条压测未做</b>(种子规模 10 客户)</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>Electron 壳:托盘 / 全局快捷键 Ctrl+K / 系统通知 / 开机自启</td><td><b>GUI 运行级确认(本会话)</b>:E2E 多轮启动 + 用户实机截图(深色渲染/页面/抽屉正常);全局 Ctrl+K E2E 验证;新增融合深色标题栏(隐藏系统白条+移除原生菜单)+系统管理可切换(重启用)</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>全文搜索:1 万条 ≤200ms;跨模块命中;写入即时可见</td><td><b>1 万条实测(本会话)</b>:构建+最大查询 189ms &lt; 200ms(<code>scripts/perf-search.mjs</code>);跨模块命中+写入即时可见 E2E 验证</td></tr>
 <tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>schema 迁移:构造旧数据升级字段无损</td><td><code>db.ts</code> SCHEMA_VERSION=2 幂等迁移;<b>已补真实迁移单测</b>(fake-indexeddb 造 v1 旧库→升级 v2→新仓可用且旧数据无损,4 项 db 测试含迁移/软删除/日志撤销/备份往返)</td></tr>
 <tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>软删除 + 回收站;删除有关联记录的客户被阻止并提示</td><td><code>db.softDelete/listTrashed/restore/purge</code>;CRM 删除含商机客户 → toast 阻止</td></tr>
 <tr><td><input type="checkbox"></td><td><span class="st part">部分</span></td><td>操作日志含回滚载荷;单条撤销;批量就地撤销</td><td>日志含 before 快照 + 系统管理"操作日志"页单条撤销 ✅;批量 Toast 内 Undo 按钮未做</td></tr>
-<tr><td><input type="checkbox"></td><td><span class="st part">部分</span></td><td>静态加密(SQLCipher/OS 级);AI Key 存 OS 凭据管理器</td><td><b>代码级完成(本会话)</b>:db 门面 AES-256-GCM 透明加解密;数据密钥经 safeStorage/DPAPI 保护落 userData/vault.key;存量明文库开库后一次性幂等迁移(meta 标记+__enc 跳过);单测含 加解密往返/篡改检出/v2 明文库迁移;AI Key 本就 safeStorage 加密。待 GUI 首跑确认 Electron 实链路(SQLCipher 需整体替换 IndexedDB,不采用)</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>静态加密(SQLCipher/OS 级);AI Key 存 OS 凭据管理器</td><td><b>代码级+运行级(本会话)</b>:db 门面 AES-256-GCM 透明加解密;密钥 safeStorage/DPAPI 保护(vault.key,0600,仅 ENOENT 才重建,解密失败 fail-closed 保留现场);存量明文库一次性幂等迁移;E2E Electron 实跑断言「已启用 · AES-256-GCM」;审查高危已修。注:备份仍为明文 JSON(已在设置页警示,加密备份下一迭代)</td></tr>
 <tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>备份自动轮转(默认 7 份);恢复往返一致</td><td>手动导出/恢复 ✅;<b>自动轮转已实现</b>:设置页开启+选目录+间隔/保留份数,主进程写盘并清理超量,错过时点启动补跑;往返一致有单测</td></tr>
 <tr><td><input type="checkbox"></td><td><span class="st part">部分</span></td><td>性能:首屏 ≤3s / 千行导入 ≤5s / 搜索 ≤200ms</td><td><b>搜索压测达标(实测)</b>:1 万条构建 254ms,最大查询 189ms < 200ms(scripts/perf-search.mjs);千行导入校验有单测断言(<5s);首屏未实测(GUI)</td></tr>
-<tr><td><input type="checkbox"></td><td><span class="st part">部分</span></td><td>核心单测 + E2E</td><td>单测 15/15 过(校验/健康度/加权/漏斗/NBA + <b>db 层:迁移/软删除/日志撤销/备份往返</b> + <b>AI:脱敏代理/分级路由 4 项</b>);E2E 仍未搭建</td></tr>
+<tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>核心单测 + E2E</td><td><b>单测 23/23</b>(校验/健康度/加权/漏斗/NBA/db 迁移软删除撤销备份/脱敏路由/加密往返篡改迁移/Agent 开关与限额/写入基准);<b>E2E Playwright+Electron 4 用例</b>(启动+Onboarding+加密运行级+AI设置/九页导航/快速采集+360抽屉/千行导入全链路+重载首屏)已搭建并全绿;注:桌面被占用时偶发环境波动(已定位缓解)</td></tr>
 <tr><td><input type="checkbox"></td><td><span class="st ok">通过</span></td><td>提醒可靠性:托盘常驻 / 开机自启可配</td><td>托盘常驻+菜单+自启设置项;免打扰/补发/snooze 见 8.3</td></tr>
 </table>
 

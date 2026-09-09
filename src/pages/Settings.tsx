@@ -97,6 +97,14 @@ export default function SettingsPage(props: { theme: "dark" | "light"; setTheme:
               <option value="light">浅色</option>
             </select>
           </div>
+          <div className="alert-line"><span className="txt">标题栏(融合深色=默认;系统原生=Windows 白条;切换后需重启)</span>
+            {window.mta ? (
+              <span style={{ display: "inline-flex", gap: 8 }}>
+                <Btn kind={(window.mta.windowMode ?? "integrated") === "integrated" ? "data" : "ghost"} sm onClick={() => { void (async () => { await window.mta!.titlebarSet("integrated"); show("已保存:融合深色标题栏,重启应用后生效"); })(); }}>融合深色</Btn>
+                <Btn kind={(window.mta.windowMode ?? "integrated") === "native" ? "data" : "ghost"} sm onClick={() => { void (async () => { await window.mta!.titlebarSet("native"); show("已保存:系统原生标题栏,重启应用后生效"); })(); }}>系统原生</Btn>
+              </span>
+            ) : <Chip gray>浏览器模式不适用</Chip>}
+          </div>
           <div className="alert-line"><span className="txt">专注模式(侧栏收窄为图标、强调色灰化)</span>
             <Btn kind="ghost" onClick={() => { document.documentElement.classList.toggle("focus-mode"); show("专注模式已切换"); }}>切换</Btn>
           </div>
@@ -123,6 +131,7 @@ export default function SettingsPage(props: { theme: "dark" | "light"; setTheme:
             <Btn kind="danger" onClick={() => { void (async () => { await db.clearAll(); await seedIfEmpty(); await props.reload(); show("已重置并重建示例数据"); })(); }}>重置示例数据</Btn>
           </div>
           <div className="h-row" style={{ marginTop: 20 }}><span className="h-title sm">自动备份轮转</span></div>
+          <div className="alert-line"><span className="txt">安全提示:备份/自动备份当前导出为明文 JSON(加密备份属下一迭代)</span><Chip kind="warn">注意保管</Chip></div>
           <div className="alert-line"><span className="txt">开启后按间隔自动写盘到所选目录,保留最近份数,错过时点启动补跑</span>
             <Btn kind={ab.enabled ? "data" : "ghost"} sm onClick={() => { const v = { ...ab, enabled: !ab.enabled }; setAb(v); void db.setSetting("autoBackup", v); show(v.enabled ? "自动备份已开启" : "自动备份已关闭"); }}>{ab.enabled ? "已开启" : "已关闭"}</Btn>
           </div>

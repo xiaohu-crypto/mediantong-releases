@@ -9,6 +9,7 @@
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "e2e": "tsc -p tsconfig.electron.json && playwright test",
     "electron:dev": "vite build && tsc -p electron && electron .",
     "electron:main": "tsc -p tsconfig.electron.json"
   },
@@ -21,6 +22,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",

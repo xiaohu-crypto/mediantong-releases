@@ -110,6 +110,17 @@ export const db = {
     return getAllDec<T>(d, store);
   },
 
+  /** 批量写入:全部加密完成后单事务提交(性能:万级导入从分钟级降到秒级) */
+  async putMany<T extends { id: string }>(store: StoreName, values: T[]): Promise<void> {
+    const d = await getDB();
+    const recs: unknown[] = [];
+    for (const v of values) recs.push(await encryptRecord({ ...v, updatedAt: Date.now() }));
+    const tx = d.transaction(store, "readwrite");
+    const st = tx.objectStore(store);
+    for (const r of recs) st.put(r);
+    await tx.done;
+  },
+
   /** 软删除:打 deletedAt 标记,主列表应过滤 */
   async softDelete(store: StoreName, id: string, what: string): Promise<void> {
     const d = await getDB();

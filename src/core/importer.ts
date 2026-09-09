@@ -37,7 +37,8 @@ export function parseRows(rows: ImportRow[], existingNames: string[]): { ok: Imp
   const ok: ImportRow[] = [];
   const fails: { row: number; name: string; errors: Errors }[] = [];
   for (const r of rows) {
-    const errs = validateCustomer({ name: r.name, industry: r.industry, grade: r.grade || undefined, billingTitle: r.billingTitle || undefined, billingTaxNo: r.billingTaxNo || undefined }, Array.from(names));
+    const errs = validateCustomer({ name: r.name, industry: r.industry, grade: r.grade || undefined, billingTitle: r.billingTitle || undefined, billingTaxNo: r.billingTaxNo || undefined }, []);
+    if (r.name.trim() !== "" && names.has(r.name.trim())) errs.name = "同级客户名称已存在";
     if (r.grade && !(GRADES as readonly string[]).includes(r.grade)) errs.grade = "等级必须为 S/A/B/C";
     if (Object.keys(errs).length) { fails.push({ row: r.row, name: r.name, errors: errs }); continue; }
     names.add(r.name.trim());

@@ -3,22 +3,44 @@ import { mkdir, readdir, writeFile, unlink, readFile } from "node:fs/promises";
 import path2 from "node:path";
 const authOf = (k: string) => ("Bea" + "rer ") + k;
 import path from "node:path";
+import { readFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 
 let win: BrowserWindow | null = null;
 let tray: Tray | null = null;
 
+/** 标题栏模式:读 userData/window-mode.json(integrated=融合深色,默认;native=系统原生) */
+function windowMode(): "integrated" | "native" {
+  try {
+    const f = readFileSync(path.join(app.getPath("userData"), "window-mode.json"), "utf-8");
+    return JSON.parse(f).mode === "native" ? "native" : "integrated";
+  } catch { return "integrated"; }
+}
+
 function createWindow() {
-  win = new BrowserWindow({
+  const mode = windowMode();
+  const opts: Electron.BrowserWindowConstructorOptions = {
     width: 1360,
     height: 860,
     minWidth: 1100,
     backgroundColor: "#0E0F13",
+    autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
+      additionalArguments: ["--mt-window-mode=" + mode],
     },
+  };
+  if (mode === "integrated") {
+    opts.titleBarStyle = "hidden";
+    opts.titleBarOverlay = { color: "#0E0F13", symbolColor: "#E8E8EC", height: 38 };
+  }
+  win = new BrowserWindow(opts);
+  win.webContents.on("before-input-event", (e, input) => {
+    if (input.type !== "keyDown") return;
+    if (input.key === "F12") { win?.webContents.toggleDevTools(); e.preventDefault(); }
+    else if (input.control && input.key.toLowerCase() === "r") { win?.webContents.reload(); e.preventDefault(); }
   });
   if (process.env.VITE_DEV_SERVER_URL) {
     void win.loadURL(process.env.VITE_DEV_SERVER_URL);
@@ -36,6 +58,7 @@ function trayIcon() {
 }
 
 app.whenReady().then(() => {
+  Menu.setApplicationMenu(null); // 移除原生 File/Edit/View 白色菜单栏
   createWindow();
 
   tray = new Tray(trayIcon());
@@ -56,6 +79,11 @@ app.whenReady().then(() => {
     return app.getLoginItemSettings().openAtLogin;
   });
   ipcMain.handle("login-item:get", () => app.getLoginItemSettings().openAtLogin);
+  ipcMain.handle("titlebar:set", async (_e, mode: string) => {
+    const mv = mode === "native" ? "native" : "integrated";
+    await writeFile(path.join(app.getPath("userData"), "window-mode.json"), JSON.stringify({ mode: mv }), "utf-8");
+    return { ok: true, restart: true };
+  });
 
   // ===== AI:密钥加密存储(safeStorage)+ 云调用代理(主进程无 CORS) =====
   ipcMain.handle("ai:saveKey", (_e, plain: string) => {
@@ -116,12 +144,19 @@ ipcMain.handle("vault:ensure", async () => {
     if (!safeStorage.isEncryptionAvailable()) return { ok: false, reason: "safeStorage 不可用" };
     const file = path2.join(app.getPath("userData"), "vault.key");
     let raw = "";
+    let exists = true;
     try {
       const wrapped = await readFile(file);
       raw = safeStorage.decryptString(wrapped);
-    } catch {
+    } catch (e) {
+      const code = (e as { code?: string }).code;
+      // 审查修复:仅文件缺失才生成新密钥;解密失败(DPAPI 换绑/损坏)必须 fail-closed,禁止覆盖旧密钥导致全库不可解
+      if (code !== "ENOENT") return { ok: false, reason: "vault.key 解密失败,已保留现场;数据需原密钥解密,请勿删除 vault.key" };
+      exists = false;
+    }
+    if (!exists) {
       raw = randomBytes(32).toString("base64");
-      await writeFile(file, safeStorage.encryptString(raw));
+      await writeFile(file, safeStorage.encryptString(raw), { mode: 0o600 });
     }
     return { ok: true, raw };
   } catch (e) {

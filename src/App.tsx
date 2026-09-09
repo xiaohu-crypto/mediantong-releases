@@ -19,7 +19,7 @@ import QuickCapture from "./components/QuickCapture";
 import TopSearch from "./components/TopSearch";
 import Onboarding from "./components/Onboarding";
 import {
-  IconHome, IconPlus, IconUsers, IconTask, IconKb, IconFunnel,
+  IconHome, IconPlus, IconUsers, IconTask, IconKb, IconFunnel, IconToday, IconFlag,
   IconMedia, IconChart, IconGrowth, IconSettings, IconMoon, IconSun,
 } from "./components/icons";
 
@@ -32,6 +32,8 @@ declare global {
       aiSaveKey: (plain: string) => Promise<{ enc?: string; plain?: string }>;
       aiLoadKey: (rec: { enc?: string; plain?: string }) => Promise<string>;
       aiEnvKey: () => Promise<string>;
+      windowMode: string;
+      titlebarSet: (mode: "integrated" | "native") => Promise<{ ok: boolean; restart?: boolean }>;
       aiChat: (args: { baseUrl: string; apiKey: string; model: string; messages: { role: string; content: string }[] }) =>
         Promise<{ ok: boolean; content?: string; error?: string; status?: number; usage?: { total_tokens?: number } }>;
       backupPickDir: () => Promise<string | null>;
@@ -53,7 +55,7 @@ interface DataSet {
 type View = "today" | "crm" | "work" | "dev" | "media" | "kb" | "data" | "growth" | "settings" | "help";
 
 const NAV: { key: View; label: string; icon: (p: { size?: number }) => JSX.Element; group: string }[] = [
-  { key: "today", label: "今日驾驶舱", icon: IconHome, group: "工作区" },
+  { key: "today", label: "今日驾驶舱", icon: IconToday, group: "工作区" },
   { key: "crm", label: "CRM 客户管理", icon: IconUsers, group: "八大模块" },
   { key: "work", label: "工作管理系统", icon: IconTask, group: "八大模块" },
   { key: "dev", label: "客户开发系统", icon: IconFunnel, group: "八大模块" },
@@ -61,7 +63,7 @@ const NAV: { key: View; label: string; icon: (p: { size?: number }) => JSX.Eleme
   { key: "kb", label: "知识学习系统", icon: IconKb, group: "八大模块" },
   { key: "data", label: "数据分析报表", icon: IconChart, group: "八大模块" },
   { key: "growth", label: "个人成长规划", icon: IconGrowth, group: "八大模块" },
-  { key: "help", label: "使用手册", icon: IconKb, group: "系统" },
+  { key: "help", label: "使用手册", icon: IconFlag, group: "系统" },
   { key: "settings", label: "系统管理", icon: IconSettings, group: "系统" },
 ];
 
@@ -116,6 +118,7 @@ export default function App() {
       const t = await db.getSetting<"dark" | "light">("theme", "dark");
       setTheme(t);
       document.documentElement.setAttribute("data-theme", t);
+      document.documentElement.dataset.titlebar = window.mta?.windowMode ?? "integrated";
     })();
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setShowQuick(true); }
@@ -192,12 +195,15 @@ export default function App() {
           <div className="brand-mark"><IconHome size={17} /></div>
           <div>
             <div className="brand-name">媒电通工作台</div>
-            <div className="brand-sub">MediaDesk · P0-P2</div>
+            <div className="brand-sub">本地优先工作台</div>
           </div>
         </div>
+        <button className="quick-cta" onClick={() => setShowQuick(true)}>
+          <IconPlus size={16} /><span className="ni-label">快速采集</span><span className="kbd">Ctrl K</span>
+        </button>
         <nav className="nav">
           {["工作区", "八大模块", "系统"].map((group) => (
-            <div key={group}>
+            <div key={group} className={"nav-group" + (group === "系统" ? " nav-sys" : "")}>
               <div className="nav-label">{group}</div>
               {NAV.filter((n) => n.group === group).map((n) => (
                 <div key={n.key} className={"nav-item" + (view === n.key ? " active" : "")}
@@ -206,14 +212,10 @@ export default function App() {
                   <span className="ni-label">{n.label}</span>
                 </div>
               ))}
-              {group === "工作区" ? <div className="nav-sep" /> : null}
             </div>
           ))}
-          <div className="nav-item" onClick={() => setShowQuick(true)}>
-            <IconPlus size={16} /><span className="ni-label">快速采集 (Ctrl+K)</span>
-          </div>
         </nav>
-        <div className="nav-foot"><span className="dot" /><span>本地存储 · AI 本地/云融合(P2)</span></div>
+        <div className="nav-foot"><span className="dot" /><span>本地优先 · 数据不上传</span></div>
       </aside>
 
       <div className="main">

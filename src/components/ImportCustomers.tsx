@@ -18,11 +18,19 @@ export default function ImportCustomers(props: Props) {
   if (!props.open) return null;
 
   async function onFile(f: File) {
-    const XLSX = await import("xlsx");
-    const buf = await f.arrayBuffer();
-    const wb = XLSX.read(buf, { type: "array" });
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const aoa = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, defval: "" });
+    // CSV 走原生文本解析(XLSX.read 在 Electron 渲染进程对大 CSV 会挂起,实测 2026-09-10);xlsx 才用 XLSX 解析
+    const lower = f.name.toLowerCase();
+    let aoa: unknown[][];
+    if (lower.endsWith(".csv")) {
+      const text = await f.text();
+      aoa = text.split(/\r?\n/).filter((l) => l.trim() !== "").map((line) => line.split(",").map((v) => v.trim().replace(/^"(.*)"$/, "$1")));
+    } else {
+      const XLSX = await import("xlsx");
+      const buf = await f.arrayBuffer();
+      const wb = XLSX.read(buf, { type: "array" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      aoa = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, defval: "" });
+    }
     if (aoa.length < 2) { window.alert("表格为空或只有表头"); return; }
     const hs = (aoa[0] as unknown[]).map((x) => String(x));
     const m = columnMatch(hs);
@@ -62,11 +70,12 @@ export default function ImportCustomers(props: Props) {
   async function confirmImport() {
     const pre = parseRows(rows, props.existingNames);
     const ids: string[] = [];
-    for (const r of pre.ok) {
-      const id = uid("c");
-      await db.put("customers", { id, name: r.name, industry: r.industry || "待补充", grade: (r.grade || "C") as "S" | "A" | "B" | "C", phone: r.phone || undefined, billingTitle: r.billingTitle || undefined, billingTaxNo: r.billingTaxNo || undefined }, "Excel 批量导入");
-      ids.push(id);
+    for (let i = 0; i < pre.ok.length; i += 1000) {
+      const chunk = pre.ok.slice(i, i + 1000).map((r) => ({ id: uid("c"), name: r.name, industry: r.industry || "待补充", grade: (r.grade || "C") as "S" | "A" | "B" | "C", phone: r.phone || undefined, billingTitle: r.billingTitle || undefined, billingTaxNo: r.billingTaxNo || undefined }));
+      await db.putMany("customers", chunk);
+      for (const c of chunk) ids.push(c.id);
     }
+    if (ids.length > 0) await db.logOp({ what: "Excel 批量导入 " + ids.length + " 条客户", entityType: "customers", entityId: ids[0], before: null });
     setResult({ ok: pre.ok.length, fail: pre.fails.length, ids, fails: pre.fails });
     setPhase("done");
     await props.reload();
