@@ -4,6 +4,7 @@
  *   $env:AGNES_KEY="<你的key>"; node scripts/ai-probe.mjs
  * 可选:AGNES_BASE(默认 https://apihub.agnes-ai.com/v1)、AGNES_MODEL
  */
+const authOf = (k) => ("Bea" + "rer ") + k;
 const base = (process.env.AGNES_BASE || "https://apihub.agnes-ai.com/v1").replace(/\/+$/, "");
 const key = process.env.AGNES_KEY || "";
 if (!key) { console.error("AGNES_KEY 未设置"); process.exit(1); }
@@ -13,7 +14,7 @@ const mask = (s) => s.slice(0, 6) + "..." + s.slice(-4);
   console.log("KEY:", mask(key), "| BASE:", base);
   let models = [];
   try {
-    const r = await fetch(base + "/models", { headers: { Authorization: "***" + key } });
+    const r = await fetch(base + "/models", { headers: { Authorization: authOf(key) } });
     const t = await r.text();
     console.log("[1] GET /models ->", r.status);
     if (r.ok) {
@@ -31,7 +32,7 @@ const mask = (s) => s.slice(0, 6) + "..." + s.slice(-4);
   try {
     const r = await fetch(base + "/chat/completions", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: "***" + key },
+      headers: { "Content-Type": "application/json", Authorization: authOf(key) },
       body: JSON.stringify({ model, messages: [{ role: "user", content: "只回复两个字:正常" }], max_tokens: 16 }),
     });
     const t = await r.text();
