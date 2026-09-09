@@ -1,0 +1,662 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>媒体广告工作台 · 开发需求文档 v2.0 定稿</title>
+<style>
+:root{
+  --g0:#0E0F13; --g2:#16181D; --g4:#24262D;
+  --red-6:#FE2C55; --cyan-6:#25F4EE;
+  --bg:#f6f7f9; --surface:#fff; --ink:#0f172a; --ink2:#334155; --ink3:#64748b; --ink4:#94a3b8;
+  --border:#e2e8f0; --border-soft:#eef2f6;
+  --brand:#FE2C55; --data:#0891A8; --success:#10b981; --warning:#f59e0b; --danger:#e11d48;
+  --radius:10px;
+  --font:'Inter','PingFang SC','Microsoft YaHei',system-ui,sans-serif;
+  --mono:'JetBrains Mono',Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);color:var(--ink);font-size:14.5px;line-height:1.7}
+.layout{display:flex;min-height:100vh}
+.sidebar{width:264px;background:#0E0F13;color:#E8E8EC;position:fixed;top:0;left:0;bottom:0;overflow-y:auto;padding:20px 0;z-index:10}
+.sidebar h1{font-size:16px;font-weight:700;color:#fff;padding:0 20px 4px}
+.sidebar .sub{font-size:11px;color:#6B7078;padding:0 20px 16px;border-bottom:1px solid #1C1E24}
+.sidebar .grp{font-size:10.5px;color:#565B64;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:16px 20px 6px}
+.snav{display:block;padding:6px 20px;color:#9BA0AA;font-size:13px;cursor:pointer;text-decoration:none;border-left:3px solid transparent}
+.snav:hover{color:#fff;background:#16181D}
+.snav.on{color:#FE2C55;border-left-color:#FE2C55;background:#16181D;font-weight:600}
+.main{margin-left:264px;padding:40px 48px 80px;max-width:1060px}
+.eyebrow{font-size:11px;font-weight:700;color:var(--brand);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
+h2.sec{font-size:26px;font-weight:750;letter-spacing:-.02em;margin:0 0 6px;scroll-margin-top:20px}
+.sec-block{margin-bottom:56px}
+.lead{color:var(--ink3);font-size:14px;margin-bottom:24px;max-width:82ch}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px;margin-bottom:16px}
+.card h3{font-size:17px;font-weight:650;margin-bottom:10px}
+.card h4{font-size:14px;font-weight:650;margin:18px 0 8px;color:var(--ink2)}
+.card p{color:var(--ink3);margin-bottom:10px}
+.card ul,.card ol{margin:0 0 10px 20px;color:var(--ink2)}
+.card li{margin-bottom:6px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+@media(max-width:1000px){.grid2,.grid3{grid-template-columns:1fr}}
+.note{background:#fff1f4;border-left:4px solid var(--brand);border-radius:8px;padding:12px 16px;margin:12px 0;font-size:13.5px;color:var(--ink2)}
+.ok{background:#ecfdf5;border-left:4px solid var(--success);border-radius:8px;padding:12px 16px;margin:12px 0;font-size:13.5px;color:var(--ink2)}
+.warn{background:#fffbeb;border-left:4px solid var(--warning);border-radius:8px;padding:12px 16px;margin:12px 0;font-size:13.5px;color:var(--ink2)}
+table.t{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0}
+table.t th{background:var(--border-soft);text-align:left;padding:8px 10px;border:1px solid var(--border);font-weight:650;color:var(--ink2)}
+table.t td{padding:8px 10px;border:1px solid var(--border);color:var(--ink2);vertical-align:top}
+table.t td strong{color:var(--ink)}
+code{font-family:var(--mono);background:var(--border-soft);padding:1px 6px;border-radius:4px;font-size:.9em;color:#be185d}
+pre{background:#0E0F13;color:#E8E8EC;padding:18px 20px;border-radius:10px;overflow-x:auto;font-size:12.5px;line-height:1.6;margin:12px 0;font-family:var(--mono)}
+pre code{background:none;color:inherit;padding:0}
+.sw{display:inline-block;width:16px;height:16px;border-radius:4px;vertical-align:-3px;margin-right:6px;border:1px solid rgba(0,0,0,.12)}
+.tag{display:inline-block;padding:1px 9px;border-radius:99px;font-size:11px;font-weight:650;margin-right:6px}
+.tag-r{background:#fff1f4;color:#e11d48}
+.tag-b{background:#e8f7fa;color:#0891A8}
+.tag-g{background:#ecfdf5;color:#059669}
+.tag-y{background:#fffbeb;color:#b45309}
+.tag-gr{background:#f1f5f9;color:#475569}
+.check{width:15px;height:15px;accent-color:#FE2C55;cursor:pointer}
+.dec{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px dashed var(--border)}
+.dec:last-child{border-bottom:none}
+.dec .no{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--brand);background:#fff1f4;border-radius:6px;padding:2px 8px;flex:none;margin-top:2px}
+.dec b{color:var(--ink)}
+.prompt-box{background:linear-gradient(135deg,#1E293B,#0E0F13);color:#E2E8F0;border-radius:12px;padding:22px 26px;margin:14px 0}
+.prompt-box h4{color:#FE2C55;margin-bottom:8px;font-size:15px}
+.prompt-box p{color:#CBD5E1;margin-bottom:8px;font-size:13.5px}
+.toc-top{margin-bottom:8px}
+.kv{font-size:12.5px;color:var(--ink3)}
+@media print{.sidebar{display:none}.main{margin:0;padding:0 24px}}
+</style>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar">
+  <h1>媒电通工作台</h1>
+  <div class="sub">开发需求文档 v2.0 定稿<br>2026-09-08 · 可交付开发</div>
+  <div class="grp">定稿依据</div>
+  <a class="snav" href="#s-decisions">0. 决策追溯(头脑风暴定案)</a>
+  <div class="grp">技术总纲</div>
+  <a class="snav" href="#s-tech">1. 全局与技术约束</a>
+  <a class="snav" href="#s-data">2. 数据存储与核心数据模型</a>
+  <div class="grp">设计系统 V2</div>
+  <a class="snav" href="#s-visual">3. 视觉系统(抖音色+媒电通图标)</a>
+  <a class="snav" href="#s-ux">4. 交互规范</a>
+  <div class="grp">业务模块</div>
+  <a class="snav" href="#m-crm">5. 八大模块需求(修订版)</a>
+  <a class="snav" href="#s-ai">6. AI Agent 融合</a>
+  <div class="grp">交付</div>
+  <a class="snav" href="#s-plan">7. 分阶段交付计划</a>
+  <a class="snav" href="#s-accept">8. 交付经理验收清单</a>
+  <a class="snav" href="#s-prompt">9. 执行提示词</a>
+</nav>
+
+<main class="main">
+
+<!-- ============ 0 决策追溯 ============ -->
+<div class="sec-block toc-top" id="s-decisions">
+  <div class="eyebrow">Final · Decisions</div>
+  <h2 class="sec">0. 决策追溯:四轮头脑风暴定案</h2>
+  <p class="lead">本 v2.0 定稿整合:① 原始需求文档 v1.0;② 四轮头脑风暴的全部定案。下表为决策追溯,每条均可回溯到讨论轮次,验收时按此表核对"定案是否落实"。</p>
+  <div class="card">
+    <h3>定案登记表(开发与验收的共同基线)</h3>
+    <div class="dec"><span class="no">R1</span><div><b>平台定案:Electron 桌面壳 + Web 技术栈</b>(React 18 + TypeScript 严格模式)。托盘常驻、全局快捷键、系统通知、开机自启为 P0 能力;Tauri 作为二期瘦身备选。</div></div>
+    <div class="dec"><span class="no">R1</span><div><b>全文搜索必须有实现载体</b>:本地索引库(FlexSearch/Minisearch + 中文分词,或 wa-sqlite FTS5),索引与写入同事务,跨 8 模块统一搜索。</div></div>
+    <div class="dec"><span class="no">R1</span><div><b>AI 分级路由</b>:敏感数据(聊天/客户/合同)默认本地模型;非敏感/脱敏后走云模型;云调用前过脱敏代理;每条 AI 输出带"本机/云"角标。</div></div>
+    <div class="dec"><span class="no">R1</span><div><b>主数据统一</b>:联系人(Contact)为一级实体;商机(Deal)为唯一漏斗主数据,CRM 阶段由 Deal 派生;新增"回款 Payment""刊例价版本 RateCard""比稿 Pitch""费用 Expense"实体。</div></div>
+    <div class="dec"><span class="no">R1</span><div><b>金额口径表</b>:健康度评分的"回款及时性"以 Payment 实体为数据源;收入统计口径 = 合同签约额(默认,可切换回款/毛利)。</div></div>
+    <div class="dec"><span class="no">R2</span><div><b>今日驾驶舱为着陆页</b>(Next-Best-Action 行动清单 + 节点倒计时 + KR 进度 + 预警 + 待回款)。</div></div>
+    <div class="dec"><span class="no">R2</span><div><b>统一收件箱方案废弃 → 改为"快速采集"弹层</b>(Ctrl+K / 全局快捷键),类型:记跟进/记客户/记想法/记费用/名片OCR/微信粘贴导入/网页剪藏;采集先进"待归类区",不打断当前工作。<b>邮件渠道默认关闭,设置为可选</b>(R4 定案)。</div></div>
+    <div class="dec"><span class="no">R2</span><div><b>结构化数据→交付物导出</b>:媒介排期表 Excel(含 CPM 计算)、报价单 PDF(<b>客户版自动脱敏:隐藏媒体成本与毛利</b>)、结案报告;导出基于报价时点锁定的刊例价版本。</div></div>
+    <div class="dec"><span class="no">R2</span><div><b>行业实体补齐</b>:比稿(Pitch)管理、客户开票资料进档案、项目损益含杂费(合同−媒体成本−杂费)、关键联系人在职状态与变动预警、效果数据 CSV 回填管线、行业基准值表(可维护)。</div></div>
+    <div class="dec"><span class="no">R2</span><div><b>自定义字段扩展点</b>:v1.1 支持客户/商机自定义字段与自定义阶段;防业务模式差异卡死。</div></div>
+    <div class="dec"><span class="no">R2</span><div><b>录入回报与防数据腐烂</b>:录入即时反馈(健康分变化/下次跟进建议/知识关联);定期数据健康检查批处理(沉睡客户/联系方式复核)。</div></div>
+    <div class="dec"><span class="no">R3</span><div><b>视觉定案:抖音主题色 + 媒电通图标</b>,深色默认、浅色辅助。对标国内核心产品(飞书/纷享销客/探迹/语雀)的产品形态,不做平台生态化改造;媒电通 VI 仅借用图标体系与品牌红点缀。</div></div>
+    <div class="dec"><span class="no">R4</span><div><b>品牌红与语义色隔离</b>:#FE2C55 仅用于激活态/主CTA/品牌触点,禁止表达错误/危险;危险语义独立 #FF6B6E;青 #25F4EE 为图表主系列/链接色。</div></div>
+    <div class="dec"><span class="no">R4</span><div><b>专注模式</b>:隐藏侧栏与品牌强调、灰化装饰,纯内容工作视图。</div></div>
+    <div class="dec"><span class="no">R4</span><div><b>品牌色推导色阶表</b>:官方色 #FE2C55/#25F4EE 之外的阶值为算法推导,标注"待甲方确认";开发不等甲方可直接动工。</div></div>
+    <div class="dec"><span class="no">R4</span><div><b>客户 360° 为抽屉式详情</b>(方案 A):列表为主体,右侧 460px 抽屉,四页签:概览/决策链(角色徽章制)/时间线/合同与回款。</div></div>
+  </div>
+</div>
+
+<!-- ============ 1 技术约束 ============ -->
+<div class="sec-block" id="s-tech">
+  <div class="eyebrow">Architecture</div>
+  <h2 class="sec">1. 全局与技术约束</h2>
+  <p class="lead">本地优先的个人桌面工作台,服务媒体广告从业者"获客—策略—执行—复盘—成长"全流程。所有外部操作(AI 调用/云备份/导入导出)需用户显式授权。</p>
+  <div class="card">
+    <h3>1.1 技术选型(已冻结,不再二选一)</h3>
+    <table class="t">
+      <tr><th style="width:120px">层面</th><th>选型</th><th>约束</th></tr>
+      <tr><td><strong>应用壳</strong></td><td><strong>Electron</strong>(托盘/全局快捷键/通知/自更新)</td><td>P0 定案;二期可评估 Tauri 瘦身,架构上壳与业务分层解耦</td></tr>
+      <tr><td><strong>前端</strong></td><td>React 18 + TypeScript 严格模式</td><td>组件库按第 3/4 章自建,禁止引入与设计系统冲突的 UI 库</td></tr>
+      <tr><td><strong>样式</strong></td><td>CSS 变量(设计令牌)+ CSS Modules</td><td>禁止硬编码色值/字号/圆角;令牌见 3.2</td></tr>
+      <tr><td><strong>结构化存储</strong></td><td>IndexedDB</td><td>带 schema 版本号与迁移脚本(v1 起);见 2.1</td></tr>
+      <tr><td><strong>非结构化</strong></td><td>本地文件系统</td><td>按 2.2 目录组织;文件登记指纹(hash)支持完整性扫描</td></tr>
+      <tr><td><strong>全文搜索</strong></td><td>FlexSearch/Minisearch + 中文分词(或 wa-sqlite FTS5)</td><td>跨模块统一搜索;写入事务内同步索引;性能预算见 1.3</td></tr>
+      <tr><td><strong>OCR</strong></td><td>语言包随应用内置(Tesseract.js 或本地 RapidOCR)</td><td>满足离线;名片需版式后处理(姓名/电话/公司字段切分)</td></tr>
+      <tr><td><strong>图表</strong></td><td>ECharts</td><td>图表色板用 3.3 数据色令牌;导出 ≥ 2x 分辨率</td></tr>
+      <tr><td><strong>AI</strong></td><td>Agent 抽象层:本地模型(Ollama 类)与云 API 可插拔</td><td>分级路由见第 6 章;密钥存 OS 凭据管理器,禁止明文</td></tr>
+      <tr><td><strong>文档解析</strong></td><td>PDF/Word/Excel/PPT 解析库 + .eml</td><td>Excel 导入走"列名 AI 匹配→预览→批量导入→查重合并"</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>1.2 六层架构</h3>
+    <ol>
+      <li><strong>表现层</strong> — 今日驾驶舱 + 八大模块页面(布局范式见 4.1)</li>
+      <li><strong>业务模块层</strong> — 八大业务逻辑</li>
+      <li><strong>系统服务层</strong> — 统一搜索/通知提醒/自动化工作流/标签治理/模板管理/文件管理/校验引擎/操作日志</li>
+      <li><strong>数据处理层</strong> — 信息采集管线 + 文档导入引擎 + 数据校验 + 脱敏代理</li>
+      <li><strong>数据存储层</strong> — IndexedDB(带版本迁移)+ 文件系统(带指纹登记)双轨</li>
+      <li><strong>集成对接层</strong> — 微信(粘贴/文件导入)/邮件(.eml,默认关闭)/OCR/浏览器剪藏/AI(本地+云)</li>
+    </ol>
+  </div>
+  <div class="card">
+    <h3>1.3 非功能需求(验收硬指标)</h3>
+    <table class="t">
+      <tr><th>项</th><th>指标</th></tr>
+      <tr><td><strong>全文搜索</strong></td><td>1 万条记录内,输入到出结果 ≤ 200ms</td></tr>
+      <tr><td><strong>Excel 批量导入</strong></td><td>1000 行解析+查重+入库 ≤ 5s,进度可见,部分失败可导出失败明细</td></tr>
+      <tr><td><strong>首屏启动</strong></td><td>冷启动到今日驾驶舱可交互 ≤ 3s</td></tr>
+      <tr><td><strong>数据安全</strong></td><td>客户/聊天/财务数据静态加密(SQLCipher 或 OS 级);备份文件可选加密;AI Key 存 OS 凭据管理器</td></tr>
+      <tr><td><strong>备份恢复</strong></td><td>自动备份周期可配(默认每日),保留最近 7 份轮转;恢复演练纳入验收(往返一致)</td></tr>
+      <tr><td><strong>自动化测试</strong></td><td>校验引擎/健康度评分/加权预测/备份恢复 循环必须有单测;核心流程有 E2E</td></tr>
+      <tr><td><strong>可访问性</strong></td><td>WCAG AA:正文对比度 ≥ 4.5:1;全键盘操作;触控目标 ≥ 44px;尊重 prefers-reduced-motion</td></tr>
+      <tr><td><strong>提醒可靠性</strong></td><td>托盘常驻 + 开机自启可配;错过提醒补发;免打扰时段</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============ 2 数据 ============ -->
+<div class="sec-block" id="s-data">
+  <div class="eyebrow">Data Model</div>
+  <h2 class="sec">2. 数据存储与核心数据模型</h2>
+  <p class="lead">本章修复 v1.0 的三处主数据冲突,并补齐媒体行业缺失实体。实体字段为<strong>最小必集</strong>,开发可扩展但不得删减;枚举值见各表,自定义字段机制见 2.4。</p>
+  <div class="card">
+    <h3>2.1 存储规范与演进</h3>
+    <ul>
+      <li>双轨存储:IndexedDB(结构化)+ 文件系统(非结构化),与 v1.0 一致;目录结构沿用 v1.0 §3.2(客户/项目/知识库/备份/附件归档)。</li>
+      <li><strong>schema 版本迁移</strong>:每个对象仓库存 schemaVersion;升级走幂等迁移脚本,失败可回退;迁移在验收中单独测(造 v1 数据→升级→字段无损)。</li>
+      <li><strong>引用完整性</strong>:删除客户时关联实体(商机/合同/回款/任务/文件引用)默认<strong>阻止删除并提示</strong>,可选"归档";全部删除走<strong>软删除 + 回收站(30 天)</strong>,回收站可恢复。</li>
+      <li><strong>操作日志与回滚</strong>:所有写入记录 who/what/when + <strong>回滚载荷(变更前快照)</strong>,单条变更支持撤销;批量操作支持"就地撤销"(Toast 内 Undo)。</li>
+      <li><strong>文件一致性</strong>:文件入库登记指纹(大小+hash);提供"完整性扫描",悬空引用可修复或重链。</li>
+      <li><strong>导入幂等与查重</strong>:名片 OCR / Excel / 微信记录导入统一查重键(手机号 &gt; 微信号 &gt; 名称相似度),命中多客户时出人工确认 UI。</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>2.2 核心实体(统一主数据)</h3>
+    <pre><code>// 联系人为一级实体(R1 定案:可横跨多客户/集团,支持人脉复用)
+Contact {
+  id, name(必填), phone?(唯一键), wechat?(唯一键),
+  title, orgCustomerId?,          // 当前在职组织
+  employmentStatus(在职/离职/换岗),   // 变动触发"关系风险"预警
+  tags[], notes
+}
+CustomerContactRel { contactId, customerId, role(决策人DM/影响者/使用者/把关人/审批人), isPrimary }
+
+Customer {                       // 支持层级(R1:集团→客户主体)
+  id, name(同级唯一), parentId?, // 集团客户
+  industry, region, grade(S/A/B/C),
+  billingInfo {                  // 开票资料(R2 定案)
+    title, taxNo, bank, account, address, phone, invoiceType(专票/普票)
+  },
+  customFields{}                 // 自定义字段(R2 定案)
+}
+// 注意:v1.0 的 contacts[] 内嵌数组废弃,统一走 Contact + 关联表
+
+Deal {                           // 唯一漏斗主数据(R1:CRM 阶段由 Deal 派生)
+  id, customerId, title,
+  stage(线索/MQL/SQL/商机/报价/谈判/签约/输单/流失),
+  value, probability, weightedValue,   // 加权=value×probability
+  source(自然/转介绍/比稿/内容/其他),
+  pitchId?,                      // 来源比稿
+  meddic{8维}, bant{预算/决策权/需求/时间}, spinNotes[],
+  expectedClose, nextAction?, nextActionDate?
+}
+Pitch {                          // 比稿管理(R2 定案)
+  id, customerId?, name, date, investment(投入工时/成本),
+  competitors[], result(胜/败/待定), lossReason?, reviewNote?
+}
+
+Contract {
+  id, customerId, amount, signDate, period,
+  paymentTerms, taxIncluded(含税/不含税), status(履行中/已完成/已终止),
+  attachments[]
+}
+Payment {                        // 回款实体(R1 定案:健康度数据源)
+  id, contractId, customerId, dueDate, amount,
+  paidDate?, status(未到/已收/逾期/部分), partialAmount?
+}
+
+MediaResource {
+  id, name, type, supplierId,    // 供应商为必填(R1:采购侧主体)
+  tags[]
+}
+RateCard {                       // 刊例价版本(R2 定案)
+  id, resourceId, version, effectiveFrom, effectiveTo?,
+  listPrice, currency, remark
+}
+MediaSupplier { id, name, type(官方/代理/达人机构), contactIds[], rebatePolicy? }  // 返点政策
+MediaBuy {
+  id, scheduleId, resourceId, rateCardVersionId,  // 报价锁定刊例版本
+  cost, sellPrice, rebate?, rebateSettled(否/是),
+  paymentStatus, ioStatus
+}
+Schedule { id, projectId, name, startDate, endDate, impressionTarget, status }
+PostBuy { id, scheduleId, actualImpression, cpm, cpc, cpa, roi, vsExpected, dataSource(手动/CSV回填) }
+
+Expense {                        // 项目杂费(R2:损益=合同−媒体成本−杂费)
+  id, projectId?, customerId?, type(差旅/招待/制作/其他), amount, date, note
+}
+Project { id, name, customerId, contractId?, revenue, mediaCost, miscExpense, status, wbs[], risks[] }
+
+Task { id, title, priority, due, status, kanbanCol, estimate, energy, objectiveId?, dealId?, customerId? }
+Objective { id, quarter, title, keyResults[3-5], progress }
+Note { id, title, tags[], content(md), links[], para(Projects/Areas/Resources/Archives), versionHistory[], createdAt, updatedAt }
+Resource { id, type(课程/书籍/播客/视频/文章), title, url, status, progress }
+Baseline { id, dimension(行业/媒体), metric(CPM/CVR/ROI), value, source, updatedAt }  // 行业基准值(R2)
+Review { id, type(周AAR/月度/项目复盘), targetRef, autoPrefill{}, reasonText, lessons[] } // 复盘自动预填
+</code></pre>
+  </div>
+  <div class="card">
+    <h3>2.3 金额与统计口径表(验收对照用)</h3>
+    <table class="t">
+      <tr><th>指标</th><th>口径(默认)</th><th>数据源</th></tr>
+      <tr><td>签约额</td><td>合同 amount(含税状态按合同标注)</td><td>Contract</td></tr>
+      <tr><td>收入统计</td><td>默认=签约额;可切换"回款口径""毛利口径"</td><td>Contract / Payment / Project</td></tr>
+      <tr><td>项目毛利</td><td>合同额 − Σ媒体成本(扣返点) − Σ杂费</td><td>Contract+MediaBuy+Expense</td></tr>
+      <tr><td>加权预测</td><td>Σ(Deal.value × probability);probability 由阶段概率×MEDDIC 修正</td><td>Deal</td></tr>
+      <tr><td>健康度评分</td><td>合作频次 30% + 回款及时性 30% + 沟通响应度 20% + 满意度 20%;新客户冷启动=70 分</td><td>ContactPoint+Payment+ContactPoint 频次+NPS</td></tr>
+      <tr><td>RFM</td><td>R=最近签约月数差;F=近 12 月签约次数;M=近 12 月签约额;五分位分层</td><td>Contract</td></tr>
+      <tr><td>比稿成功率</td><td>近 12 月 result=胜 ÷ (胜+败)</td><td>Pitch</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>2.4 校验引擎与扩展机制</h3>
+    <ul>
+      <li>校验规则(沿用 v1.0 §3.3):客户名称同级必填唯一;手机号 11 位 1 开头;金额 &gt;0 两位小数;阶段/等级/角色必须来自枚举白名单。</li>
+      <li><strong>标签分层治理</strong>(R1 定案):系统枚举(阶段/等级/角色)严格白名单;用户标签允许自由创建,提供合并/别名/颜色管理;跨模块标签统一存储。</li>
+      <li><strong>自定义字段</strong>(R2 定案):客户/商机支持用户自定义字段(文本/数字/日期/单选),字段定义存元数据表;自定义阶段:允许在默认阶段间插入自定义阶段,不可删除系统阶段。</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ============ 3 视觉 ============ -->
+<div class="sec-block" id="s-visual">
+  <div class="eyebrow">Design System V2</div>
+  <h2 class="sec">3. 视觉系统(抖音主题色 + 媒电通图标)</h2>
+  <p class="lead">深色默认、浅色辅助。对标国内成熟产品形态(飞书/纷享销客/探迹/语雀),视觉语言为"层次黑工作台 + 抖音双色强调 + 媒电通图标"。参考原型:<code>V2 媒体广告工作台-UI原型图.html</code>。</p>
+  <div class="card">
+    <h3>3.1 品牌色与推导色阶</h3>
+    <table class="t">
+      <tr><th>令牌</th><th>深色值</th><th>浅色值</th><th>用途</th></tr>
+      <tr><td><code>--brand</code></td><td><span class="sw" style="background:#FE2C55"></span>#FE2C55(官方)</td><td><span class="sw" style="background:#E01844"></span>#E01844</td><td><strong>仅限</strong>:激活态/主 CTA/品牌触点/红点提醒。禁止表达错误/危险</td></tr>
+      <tr><td><code>--data</code></td><td><span class="sw" style="background:#25F4EE"></span>#25F4EE(官方)</td><td><span class="sw" style="background:#0891A8"></span>#0891A8</td><td>图表主系列/链接/数据强调</td></tr>
+      <tr><td><code>--danger</code></td><td><span class="sw" style="background:#FF6B6E"></span>#FF6B6E</td><td><span class="sw" style="background:#E11D48"></span>#E11D48</td><td>错误/危险/逾期(与品牌红隔离)</td></tr>
+      <tr><td><code>--success</code></td><td><span class="sw" style="background:#2EDB8B"></span>#2EDB8B</td><td><span class="sw" style="background:#10B981"></span>#10B981</td><td>成功/健康/已收</td></tr>
+      <tr><td><code>--warning</code></td><td><span class="sw" style="background:#F5B93E"></span>#F5B93E</td><td><span class="sw" style="background:#F59E0B"></span>#F59E0B</td><td>预警/临期/部分逾期</td></tr>
+      <tr><td><code>--bg / --surface</code></td><td><span class="sw" style="background:#0E0F13"></span>#0E0F13 / <span class="sw" style="background:#16181D"></span>#16181D</td><td>#F5F6F8 / #FFFFFF</td><td>层次黑(禁纯黑 #000 做大面积底)</td></tr>
+      <tr><td><code>--surface-2</code></td><td><span class="sw" style="background:#1C1E24"></span>#1C1E24</td><td>#F7F8FA</td><td>悬停/次级面</td></tr>
+      <tr><td>文字</td><td>#F2F3F5 / #D5D8DE / #9BA0AA / #6B7078</td><td>#17181C / #3A3D44 / #7A7F89 / #A0A5AF</td><td>ink 四级</td></tr>
+    </table>
+    <div class="warn"><strong>推导色阶:</strong>brand 红 0-7 级、data 青 0-6 级完整色阶见 V2 原型"设计令牌"卡;官方值为 #FE2C55 / #25F4EE,其余阶值为算法推导,<strong>标注"待甲方确认"</strong>。甲方色板到位后仅替换 :root 令牌,组件零改动。</div>
+    <h4>图表系列色板(暗底校验通过)</h4>
+    <p><span class="sw" style="background:#25F4EE"></span>主系列(青) <span class="sw" style="background:#8B7CF6"></span>次系列(紫) <span class="sw" style="background:#5AC8FA"></span>第三(蓝) <span class="sw" style="background:#9BA0AA"></span>第四(灰) <span class="sw" style="background:#FE2C55"></span>仅"当前选中"系列用红。导出图片分辨率 ≥2x。</p>
+  </div>
+  <div class="card">
+    <h3>3.2 图标系统(媒电通 VI,已冻结)</h3>
+    <ul>
+      <li>24×24 视口 · 1.6px 描边 · 圆头圆角(stroke-linecap/join: round);SVG sprite,命名 <code>icon-*</code>(icon-home/icon-create/icon-material/icon-chart/icon-funnel/icon-wallet/icon-search/icon-plus/icon-bell/icon-trash 等全套 38 枚,以《媒电通图标VI》PDF 为准)。</li>
+      <li>默认色 <strong>#E8E8EC</strong>(跟随文字);激活/强调唯一彩 = 品牌红;禁用 35% 不透明度。</li>
+      <li>尺寸阶梯:20px 密集 / 24px 基准 / 28px 大;触控目标 ≥ 44px。</li>
+      <li>浅色主题下图标默认色反向跟随文字(#3A3D44)。<strong>禁止</strong> emoji 作为任何 UI 元素。</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>3.3 字体与排版</h3>
+    <ul>
+      <li>中文:思源黑体 / HarmonyOS Sans / MiSans(三选一,<strong>商用授权核查后冻结</strong>);西文:Inter;代码/数字:JetBrains Mono。</li>
+      <li>金额与指标一律 <code>tabular-nums</code> 等宽数字;金额单位系统化(元/万元)。</li>
+      <li>字号阶:12/13/14/16/18/20/24/30(沿用 v1.0 §4.1);间距 4px 基准 8 级(v1.0 "13 级"表述作废,以 8 个令牌为准);圆角 4/6/8/12/999;动效 150ms 反馈 / 300ms 过渡,尊重 reduced-motion。</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>3.4 主题与品牌触点(双轨制)</h3>
+    <div class="grid2">
+      <div class="note"><strong>工作界面(克制轨)</strong>:中性黑灰白 + 表格数字排版,红色只出现在激活态与关键行动。禁止大面积玻璃拟态/霓虹渐变。</div>
+      <div class="note"><strong>品牌高光面(释放轨)</strong>:启动屏、月度成绩单、导出报告封面、提案模板封面、空状态插画——允许红青双色与创意表达。</div>
+    </div>
+    <ul>
+      <li><strong>专注模式</strong>(R4 定案):快捷键或顶栏触发,侧栏收窄为图标条、品牌强调色灰化,保留纯内容视图。</li>
+      <li><strong>明暗双主题</strong>:全部令牌双份,主题切换无需重启;图表在两主题下分别校验对比度。</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ============ 4 交互 ============ -->
+<div class="sec-block" id="s-ux">
+  <div class="eyebrow">Interaction</div>
+  <h2 class="sec">4. 交互规范</h2>
+  <p class="lead">三栏工作台范式 + 命令面板 + 抽屉详情。参考 V2 原型交互:列表点行开抽屉、Ctrl+K 快速采集、专注模式切换。</p>
+  <div class="card">
+    <h3>4.1 布局与导航</h3>
+    <ul>
+      <li><strong>三栏范式</strong>:左侧导航 236px(可收窄为 56px 图标条)/ 中部列表或看板 / 详情走<strong>右侧抽屉 460px</strong>(R4 定案,不再用并排三栏详情)。</li>
+      <li><strong>导航结构</strong>:工作区(今日驾驶舱 / 快速采集)+ 八大模块 + 系统管理。<strong>无收件箱</strong>(R4 定案:采集并入快速采集弹层)。</li>
+      <li><strong>今日驾驶舱为默认着陆页</strong>(R2 定案):AI 行动清单(Next-Best-Action,按沉默天数×价值×阶段排序)+ 营销节点倒计时 + KR 进度 + 今日日程 + 预警 + 待回款。</li>
+      <li><strong>快速采集</strong>:Ctrl+K / 托盘 / 侧栏按钮唤起;类型切换(记跟进/记客户/记想法/记费用/名片 OCR/微信粘贴导入/网页剪藏);保存入"待归类区",晚批量归类;<strong>邮件渠道默认关闭</strong>,设置中可开启(.eml 导入)。</li>
+      <li><strong>可保存视图</strong>:客户/商机/任务列表支持筛选组合保存为命名视图;列配置;密度切换(舒适/紧凑)。</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>4.2 交互状态与反馈</h3>
+    <table class="t">
+      <tr><th>类别</th><th>规范</th></tr>
+      <tr><td>组件状态</td><td>default / hover / focus / active / disabled 五态齐全;触控目标 ≥ 44px</td></tr>
+      <tr><td>加载</td><td>骨架屏优先;操作中按钮 loading;长任务进度条</td></tr>
+      <tr><td>错误</td><td>字段级即时校验(失焦)+ 提交兜底;错误文案 = 人话 + 下一步动作,禁止裸错误码</td></tr>
+      <tr><td>空态</td><td>首次使用给 onboarding 三选一:示例数据(可一键清空)/ 导入起步(Excel/名片)/ 直接开录(R2 定案)</td></tr>
+      <tr><td>部分失败</td><td>批量导入 N/M 成功时,失败明细可导出并逐条重试</td></tr>
+      <tr><td>乐观更新</td><td>保存即生效 + Toast 内"撤销"(依赖 2.1 回滚载荷)</td></tr>
+      <tr><td>通知</td><td>中心页 + 桌面通知 + 免打扰时段 + snooze;托盘常驻;错过补发</td></tr>
+      <tr><td>键盘</td><td>Ctrl+K 快速采集;Esc 逐级关闭(采集→抽屉→弹层);/ 聚焦列表筛选;方向键列表导航</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============ 5 模块 ============ -->
+<div class="sec-block" id="m-crm">
+  <div class="eyebrow">Modules</div>
+  <h2 class="sec">5. 八大模块需求(修订版)</h2>
+  <p class="lead">在 v1.0 基础上修订。每模块列出<strong>变更点</strong>与<strong>新增点</strong>;未提及的部分沿用 v1.0 原文。</p>
+
+  <div class="card">
+    <h3>5.1 CRM 客户管理 <span class="tag tag-r">修订</span></h3>
+    <ul>
+      <li>客户 360°:<strong>抽屉式</strong>(概览/决策链/时间线/合同与回款四页签);档案新增<strong>开票资料</strong>区块;支持集团→客户主体层级。</li>
+      <li>决策链:<strong>角色徽章制列表</strong>(DM/影响者/使用者/把关人/审批人),不画图形图谱;成员来自 Contact 关联。</li>
+      <li>联系人变动追踪(R2):Contact.employmentStatus 变化 → 触发"关系风险"预警 + 建议调整触达策略。</li>
+      <li>健康度评分:按 2.3 口径(含 Payment 数据源、新客户冷启动 70 分);评分变化即时反馈在客户列表行。</li>
+      <li>生命周期:线索→MQL→SQL→商机→报价→谈判→签约→续约/流失,<strong>由 Deal 派生</strong>;CRM 不再单设漏斗模型。</li>
+      <li>接触点时间线:渠道小图标区分(微信/拜访/电话/邮件),统一灰色系。</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>5.2 客户开发系统 <span class="tag tag-r">修订</span> <span class="tag tag-g">新增比稿</span></h3>
+    <ul>
+      <li>Sales Pipeline 以 <strong>Deal 为唯一主数据</strong>(R1);加权预测按 2.3 口径。</li>
+      <li><strong>比稿(Pitch)管理</strong>(R2):记录投入(工时/成本)、竞对、结果、败稿复盘;比稿成功率进预测模型与月度成绩单。</li>
+      <li>商机驱动节点:预算季/大促节点/年框续签/比稿邀请(国内广告业实际),MEDDIC/BANT/SPIN 作为评估与话术框架保留。</li>
+      <li>Next-Best-Action:并入本模块 Agent——"今天最该联系谁"排序卡(沉默天数×价值×阶段)+ 一键生成跟进话术草稿(带知识库溯源)。</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>5.3 媒介策略中心 <span class="tag tag-r">修订</span> <span class="tag tag-g">新增采购链</span></h3>
+    <ul>
+      <li>三层架构沿用(策略/执行/评估)。</li>
+      <li><strong>供应商主数据</strong>:MediaSupplier(官方/代理/达人机构)+ 返点政策;MediaBuy 必关联供应商。</li>
+      <li><strong>刊例价版本</strong>(R2):RateCard 版本表 + 生效期;报价单自动锁定"报价时点版本",杜绝旧价事故;MediaBuy 引用 rateCardVersionId。</li>
+      <li>排期甘特:媒体行 × 月/周窗口,色块含预算;状态:已确认/待确认。</li>
+      <li><strong>采购与报价双口径</strong>:媒体成本、报价、预估毛利、返点后返核销状态;<strong>客户版导出自动脱敏</strong>(隐藏成本/毛利/返点)。</li>
+      <li>Post-Buy:预期 vs 实际(CPM/CPC/CPA/ROI);数据经 CSV 回填管线导入(模板下载→导入向导→校验→入库),标注 dataSource。</li>
+      <li>策略推导依据卡:AI 输出必须附溯源(知识库条目/历史数据)。</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>5.4 数据分析报表 <span class="tag tag-r">修订</span> <span class="tag tag-g">新增基准</span></h3>
+    <ul>
+      <li>裁剪 v1.0 的企业级方法:数仓分层(ODS→DWD→DWS→DM)改为<strong>口径定义 + 物化视图</strong>;三层仪表盘改为<strong>今日驾驶舱 + 周/月复盘视图</strong>;AARRR 裁剪为"销售漏斗 + 客户健康 + 收入毛利"三组。</li>
+      <li>KPI:签约额/加权商机/回款率/综合毛利率;全部按 2.3 口径表。</li>
+      <li><strong>行业基准值表</strong>(R2):Baseline 实体,内置初始值 + 用户可维护 + 用自身历史校准;ROI/CPM 图表旁显示基准区间,让数据可解读。</li>
+      <li>图表色板按 3.1;导出 PNG ≥2x(供结案报告用)。</li>
+      <li><strong>月度成绩单</strong>(R2):自动生成个人月报(签约/回款/比稿成功率/学习时长/KR 进度),品牌高光面排版,可导出。</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>5.5 知识学习系统 <span class="tag tag-gr">微调</span></h3>
+    <ul>
+      <li>沿用 v1.0(PARA + Zettelkasten 双链 + SECI + 70-20-10)。</li>
+      <li>新增:笔记<strong>版本历史</strong>(时间机器式);知识条目可被 AI 溯源引用(输出"基于知识库哪几条")。</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>5.6 工作管理系统 <span class="tag tag-gr">微调</span></h3>
+    <ul>
+      <li>沿用 v1.0(GTD/OKR/Kanban+WIP/WBS/Eisenhower/番茄时间块/项目风险)。</li>
+      <li>新增:任务与 Deal/Customer/Project 通用关联;营销节点日历(618/双11/CNY/预算季)挂任务与排期提醒。</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>5.7 个人成长规划 <span class="tag tag-y">范围调整</span></h3>
+    <ul>
+      <li>IDP/AAR/能力素质/职业锚/人脉管理保留;AAR 自动预填数据(目标 vs 实际),用户只填原因与经验(R2)。</li>
+      <li><strong>个人财务与健康降级为轻量可选扩展</strong>(二期),不进 P0/P1 验收范围。</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>5.8 系统管理 <span class="tag tag-r">修订</span></h3>
+    <ul>
+      <li>沿用:配置/操作日志审计(含回滚载荷)/备份恢复/内置手册。</li>
+      <li>新增:<strong>数据打包交接</strong>(按客户打包导出:联系人+合同+时间线+提案+文件引用);<strong>AI 设置页</strong>(本地/云路由开关、密钥管理、月度成本限额);<strong>主题与专注模式设置</strong>;<strong>邮件渠道开关</strong>(默认关)。</li>
+      <li>回收站:软删除 30 天,可恢复/彻底删除。</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ============ 6 AI ============ -->
+<div class="sec-block" id="s-ai">
+  <div class="eyebrow">AI Integration</div>
+  <h2 class="sec">6. AI Agent 融合(本地 + 云)</h2>
+  <p class="lead">本地模型与云模型融合,分级路由,隐私默认本地。</p>
+  <div class="card">
+    <h3>6.1 分级路由(R1 定案)</h3>
+    <table class="t">
+      <tr><th>数据敏感度</th><th>任务类型</th><th>路由</th></tr>
+      <tr><td>敏感(聊天记录/客户档案/合同/财务)</td><td>解析、摘要、归类、本地 RAG 检索、话术草稿</td><td><strong>本地模型默认</strong>,数据不出机</td></tr>
+      <tr><td>非敏感 / 已脱敏</td><td>长文案生成、跨客户洞察、图表解读</td><td>云模型(可配、可关)</td></tr>
+      <tr><td>任意云调用</td><td>调用前过<strong>脱敏代理</strong>:人名/手机/金额→占位符,返回后还原</td><td>兜底隐私</td></tr>
+    </table>
+    <ul>
+      <li>Agent 抽象层:provider 可插拔(本地 Ollama 类 / 云 API);断网时本地全功能兜底。</li>
+      <li>每条 AI 输出带 <strong>"本机/云"角标</strong> + <strong>溯源引用</strong>(知识库条目/历史记录);月度成本计数与限额告警。</li>
+      <li>密钥存 OS 凭据管理器;AI 总开关按 Agent 粒度可关。</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>6.2 确认门槛矩阵(R3 定案)</h3>
+    <table class="t">
+      <tr><th>级别</th><th>动作示例</th><th>交互</th></tr>
+      <tr><td><strong>低</strong></td><td>补全字段、格式化、生成草稿、摘要</td><td>直接执行,可撤销</td></tr>
+      <tr><td><strong>中</strong></td><td>写库(建 contact point/任务)、更新商机阶段、批量归类</td><td>轻确认(一次点击)</td></tr>
+      <tr><td><strong>高</strong></td><td>删除、对外发送(催款函/报价单)、覆盖合同数据</td><td>双确认 + 显示影响范围</td></tr>
+    </table>
+    <h4>Agent 角色沿用 v1.0 十角色,职责修订两点</h4>
+    <ul>
+      <li>"客户开发策略 Agent"并入 <strong>Next-Best-Action</strong> 主动建议职责。</li>
+      <li>会议/录音一键闭环:转写→自动建 contact point + 行动项建任务 + 建议 stage 更新(确认后落库,一次交互完成)。</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ============ 7 计划 ============ -->
+<div class="sec-block" id="s-plan">
+  <div class="eyebrow">Delivery Plan</div>
+  <h2 class="sec">7. 分阶段交付计划</h2>
+  <p class="lead">防止"全量浅交付"。每阶段有独立 DoD 与验收,阶段产物必须可运行。</p>
+  <div class="card">
+    <table class="t">
+      <tr><th style="width:90px">阶段</th><th>范围</th><th>DoD(完成定义)</th></tr>
+      <tr>
+        <td><strong>P0 底座+主链路</strong></td>
+        <td>Electron 壳(托盘/快捷键/通知)、设计令牌 V2 + 组件库基础、IndexedDB+schema 迁移、校验引擎+操作日志(含回滚)、全文搜索骨架、今日驾驶舱、CRM(客户/联系人/Deal/合同/回款 + 360 抽屉)、快速采集、工作管理(任务+看板+OKR)、备份恢复往返</td>
+        <td>能日常"记客户、管跟进、看今日行动";P0 验收清单全过;核心单测通过</td>
+      </tr>
+      <tr>
+        <td><strong>P1 业务纵深</strong></td>
+        <td>客户开发(Deal 全流程+比稿+加权预测+话术库)、媒介策略(供应商/刊例版本/排期/采购报价双口径/脱敏导出)、知识库(双链+版本历史+搜索接入)、名片 OCR/微信导入管线、数据回填管线、标签治理、可保存视图、Onboarding</td>
+        <td>比稿→方案→报价(锁刊例版)→排期→结案全链路可跑通;导出物可用</td>
+      </tr>
+      <tr>
+        <td><strong>P2 智能与报表</strong></td>
+        <td>AI Agent 全量接入(本地+云路由、脱敏代理、确认矩阵、成本护栏)、数据分析(基准值表/图表/月度成绩单)、个人成长(IDP/AAR 预填)、系统管理完善(打包交接/回收站/AI 设置)、专注模式、自动化工作流(周汇总/月报)</td>
+        <td>八模块验收清单全过;性能预算达标;交付经理按第 8 章逐项签收</td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============ 8 验收 ============ -->
+<div class="sec-block" id="s-accept">
+  <div class="eyebrow">Acceptance</div>
+  <h2 class="sec">8. 交付经理验收清单</h2>
+  <p class="lead">逐项勾选验收。标注 ★ 的为 v2.0 新增/修订项,必须逐条核对。<strong>证据要求</strong>:功能项给演示;数据项给种子数据测算结果;性能项给录屏或日志。</p>
+
+  <div class="card">
+    <h3>8.1 全局与技术(1.1–1.3)</h3>
+    <table class="t">
+      <tr><th style="width:36px"></th><th>验收点</th><th style="width:120px">证据</th></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>Electron 壳:托盘常驻、全局快捷键(Ctrl+K 采集)、系统通知、开机自启可配</td><td>演示</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>全文搜索:1 万条 ≤200ms;跨模块命中;写入后索引即时可见</td><td>录屏+数据</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>schema 迁移:构造 v1 数据升级字段无损 ★</td><td>测试记录</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>软删除+回收站 30 天;删除有关联的客户被阻止并提示 ★</td><td>演示</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>操作日志含回滚载荷;单条变更可撤销;批量 Toast Undo ★</td><td>演示</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>静态加密生效;AI Key 存 OS 凭据管理器(检查非明文)★</td><td>检查</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>备份自动轮转(默认 7 份);恢复往返一致</td><td>往返测试</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>性能三项:首屏 ≤3s / 千行导入 ≤5s / 搜索 ≤200ms</td><td>录屏</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>核心单测:校验引擎/健康度/加权预测/备份恢复;E2E 主流程</td><td>CI 报告</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>8.2 设计系统 V2(第 3 章)</h3>
+    <table class="t">
+      <tr><th style="width:36px"></th><th>验收点</th><th style="width:120px">证据</th></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>深色默认/浅色可切;两主题令牌双份,切换无重启</td><td>演示</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>★ 品牌红仅出现于激活态/主CTA/品牌触点/红点;全局检索无红色用于错误/危险场景</td><td>代码走查</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>★ 危险/逾期用 --danger(#FF6B6E 系),与品牌红可区分</td><td>截图对照</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>★ 图表主系列=青,红仅"当前选中";导出 ≥2x</td><td>截图</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>图标:媒电通 sprite,1.6px/24 视口/icon-* 命名;默认 #E8E8EC,激活红;禁用 35%;无 emoji ★</td><td>代码走查</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>无硬编码色值/字号/圆角(源码检索);金额 tabular-nums</td><td>检索记录</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>WCAG AA:正文对比度、键盘可达、焦点可见、44px 目标、reduced-motion</td><td>工具检测</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>★ 专注模式:侧栏收窄+强调色灰化,内容纯净化</td><td>演示</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>8.3 交互(第 4 章)</h3>
+    <table class="t">
+      <tr><th style="width:36px"></th><th>验收点</th><th style="width:120px">证据</th></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>今日驾驶舱为默认页:行动清单排序正确(沉默天数×价值×阶段)+ 倒计时 + KR + 预警 + 待回款 ★</td><td>演示+种子数据</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>★ 快速采集:Ctrl+K/托盘/侧栏三入口;七类型;入待归类区;Esc 关闭;邮件默认关闭</td><td>演示</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>可保存视图/列配置/密度切换;Esc 逐级关闭顺序正确</td><td>演示</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>空态 Onboarding 三选一(示例数据/导入/开录),示例数据可一键清空 ★</td><td>演示</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>部分失败:批量导入失败明细可导出重试</td><td>构造数据</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>免打扰时段/错过补发/snooze</td><td>演示</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>8.4 CRM 与客户开发(5.1/5.2)</h3>
+    <table class="t">
+      <tr><th style="width:36px"></th><th>验收点</th><th style="width:120px">证据</th></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>★ 客户 360 抽屉:四页签;开票资料区块;集团→主体层级</td><td>演示</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>★ 决策链角色徽章制;联系人一级实体,一人可关联多客户</td><td>数据演示</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>★ 联系人离职/换岗触发关系风险预警</td><td>构造数据</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>★ 健康度按口径表计算(种子数据对分);冷启动 70 分;评分变化即时反映</td><td>测算记录</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>★ Deal 唯一漏斗;CRM 阶段派生一致;两处数值不出现矛盾</td><td>数据核对</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>★ 比稿:记录→结果→成功率统计→败稿复盘→进预测</td><td>演示</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>导入查重:手机号/微信/名称相似度;多命中出人工确认 ★</td><td>构造数据</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>8.5 媒介策略(5.3)</h3>
+    <table class="t">
+      <tr><th style="width:36px"></th><th>验收点</th><th style="width:120px">证据</th></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>★ 供应商主数据+返点政策;MediaBuy 必关联</td><td>演示</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>★ 刊例价版本:报价锁定版本;调价后历史报价不变</td><td>构造数据</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>排期甘特(已确认/待确认);双口径卡(成本/报价/毛利/返点核销)</td><td>演示</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>★ 报价单 PDF 客户版脱敏:无成本/毛利/返点字样(导出物全文检索)</td><td>导出检查</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>★ CSV 回填管线:模板下载→导入→校验→PostBuy 入库标 dataSource</td><td>演示</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>★ 项目损益:合同−媒体成本(扣返点)−杂费;费用挂项目</td><td>测算记录</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>8.6 数据分析 / 知识 / 工作管理(5.4–5.6)</h3>
+    <table class="t">
+      <tr><th style="width:36px"></th><th>验收点</th><th style="width:120px">证据</th></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>★ 口径表三个指标可切换(签约/回款/毛利),数值与手算一致</td><td>测算记录</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>★ 基准值表内置+可维护;图表旁显示基准区间</td><td>演示</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>★ 月度成绩单自动生成并可导出</td><td>演示</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>知识库:双链编辑、图谱渲染、PARA 归档、笔记版本历史 ★</td><td>演示</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>OKR→任务;Kanban+WIP;四象限;营销节点日历挂提醒 ★</td><td>演示</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>自定义字段/自定义阶段生效且入校验 ★</td><td>演示</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>8.7 AI 融合(第 6 章)</h3>
+    <table class="t">
+      <tr><th style="width:36px"></th><th>验收点</th><th style="width:120px">证据</th></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>★ 分级路由:敏感任务走本地(断网可用);云调用过脱敏代理(抓包验证占位符)</td><td>抓包+演示</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>★ 输出带"本机/云"角标+溯源;月度成本计数与限额告警</td><td>演示</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>★ 确认门槛矩阵:低/中/高三级行为与规范一致(高危双确认+影响范围)</td><td>演示</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>录音→转写→建 contact point+任务+阶段建议 一次闭环 ★</td><td>演示</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>AI 按 Agent 粒度可关;密钥不明文</td><td>检查</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>8.8 系统管理(5.8)</h3>
+    <table class="t">
+      <tr><th style="width:36px"></th><th>验收点</th><th style="width:120px">证据</th></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>★ 按客户打包交接导出,内容完整可再导入</td><td>往返测试</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>AI 设置页/主题设置/邮件渠道开关生效</td><td>演示</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>回收站 30 天恢复/彻底删除</td><td>演示</td></tr>
+      <tr><td><input type="checkbox" class="check"></td><td>内置手册覆盖全部八模块与快捷键</td><td>检查</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============ 9 提示词 ============ -->
+<div class="sec-block" id="s-prompt">
+  <div class="eyebrow">Execution Prompt</div>
+  <h2 class="sec">9. 执行提示词(分阶段,可直接复制)</h2>
+  <p class="lead">替代 v1.0 §9.3 的"一次性全量构建"。每阶段一段,按顺序投喂给开发 Agent;每段结尾要求汇报后再进入下一段。</p>
+  <div class="prompt-box">
+    <h4>P0 · 底座与主链路</h4>
+    <p>依据《媒体广告工作台_开发需求文档_v2.0定稿》第 1、2、3、4 章及 5.1/5.6/5.8,从零构建 Electron 桌面应用底座与主链路:① Electron 壳(托盘/全局快捷键 Ctrl+K/系统通知/开机自启可配);② 设计令牌 V2 全量 CSS 变量(第 3.1–3.3 节,含推导色阶,禁止硬编码色值,图标用媒电通规范 sprite);③ IndexedDB 双轨存储 + schemaVersion 迁移机制;④ 校验引擎 + 操作日志(含回滚载荷)+ 软删除回收站;⑤ 全文搜索骨架(分词索引,写入同事务);⑥ 今日驾驶舱(按 4.1 结构);⑦ CRM(客户/联系人一级实体/Deal 唯一漏斗/Contract/Payment,客户 360 抽屉式四页签);⑧ 快速采集弹层(七类型,邮件入口预留但默认关闭);⑨ 工作管理(任务+看板+WIP+OKR);⑩ 备份恢复往返与自动轮转。完成后输出:可运行包、核心单测(校验引擎/健康度/加权预测/备份恢复)结果、与第 8.1–8.4 验收项的自查对照表。未定义细节列出假设清单询问,禁止自造口径。</p>
+  </div>
+  <div class="prompt-box">
+    <h4>P1 · 业务纵深</h4>
+    <p>在 P0 基础上按 5.2/5.3/5.5 扩展:客户开发全流程(含比稿管理、MEDDIC/BANT、加权预测)、媒介策略中心(MediaSupplier/RateCard 版本锁定/排期甘特/采购报价双口径/报价单客户版脱敏导出/PostBuy CSV 回填管线)、知识库(双链/版本历史/接入统一搜索)、名片 OCR 与微信粘贴导入管线(查重合并)、标签治理、可保存视图、Onboarding 三选一。验收对照 8.5 与 8.4 相关项,输出自查对照表。</p>
+  </div>
+  <div class="prompt-box">
+    <h4>P2 · 智能与报表</h4>
+    <p>按第 6 章与 5.4/5.7/5.8 收尾:AI Agent 抽象层(本地 Ollama + 云 API 可插拔、分级路由、脱敏代理、确认门槛矩阵、本机/云角标、溯源引用、月度成本限额)、十个 Agent 角色接线(含 Next-Best-Action 与录音一键闭环)、数据分析(基准值表/图表/月度成绩单)、个人成长(IDP/AAR 自动预填)、系统管理(打包交接/回收站/AI 设置/专注模式)、自动化工作流(周汇总/月报)。全部完成后跑通第 8 章全部验收清单并逐项给证据。</p>
+  </div>
+  <div class="ok"><strong>文档状态:v2.0 定稿。</strong>本文件为开发与验收的唯一基线;v1.0 与三份源文档转为只读参考。后续变更在本文件上做版本递增并记录变更表。</div>
+</div>
+
+</main>
+</div>
+<script>
+document.querySelectorAll('.snav').forEach(function(a){
+  a.addEventListener('click',function(){
+    document.querySelectorAll('.snav').forEach(function(x){x.classList.remove('on');});
+    a.classList.add('on');
+  });
+});
+var obs=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){var id=e.target.id;document.querySelectorAll('.snav').forEach(function(x){x.classList.toggle('on',x.getAttribute('href')==='#'+id);});}});},{rootMargin:'-20% 0px -70% 0px'});
+document.querySelectorAll('.sec-block').forEach(function(s){obs.observe(s);});
+</script>
+</body>
+</html>

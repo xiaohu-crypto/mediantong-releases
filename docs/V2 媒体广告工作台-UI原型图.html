@@ -1,0 +1,701 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>媒体广告工作台 · UI 原型 V2 · 抖音主题色 + 媒电通图标</title>
+<!--
+  V2 变更记录
+  - 主题:深色默认(黑灰层次底 #0E0F13/#16181D,非纯黑),浅色辅助模式
+  - 主强调:品牌红 #FE2C55(抖音 Razzmatazz)仅用于 激活态/主CTA/品牌触点;禁止表达"错误/危险"
+  - 数据色:青 #25F4EE(抖音 Splash)为图表主系列/链接色;红仅标"当前选中"
+  - 语义色隔离:danger 独立 #FF6B6E 系,与品牌红区分
+  - 图标:媒电通 VI 规范 24 视口 / 1.6px 描边 / 圆头,icon-* 命名;深底默认 #E8E8EC
+  - 客户 360:抽屉式(方案 A),列表为主体
+  - 收件箱:已移除;采集并入"快速采集"按钮 + Ctrl+K
+  - 专注模式:顶栏按钮,隐藏侧栏强调、收窄为内容视图
+  - 品牌色推导色阶表:数据视图底部"设计令牌"卡
+  演示数据均为虚构
+-->
+<style>
+  :root{
+    /* 抖音品牌色推导色阶(标注:FE2C55/25F4EE 为官方值,其余为算法推导,待甲方确认) */
+    --red-6:#FE2C55; --red-7:#E01844; --red-5:#FE4566; --red-4:#FE6B85; --red-3:#FEA3B3; --red-2:#FED3DB; --red-1:#33141B; --red-0:#1F0D12;
+    --cyan-6:#25F4EE; --cyan-5:#4CF6F1; --cyan-4:#7DF8F4; --cyan-3:#ADF9F7; --cyan-2:#D9FCFB; --cyan-1:#0E2A29; --cyan-0:#091C1B;
+    /* 中性黑灰 11 级(层次黑) */
+    --g0:#0E0F13; --g1:#121319; --g2:#16181D; --g3:#1C1E24; --g4:#24262D; --g5:#2E3138;
+    --ink:#F2F3F5; --ink-2:#D5D8DE; --ink-3:#9BA0AA; --ink-4:#6B7078;
+    --border:#272A31; --border-soft:#20222A;
+    /* 语义色(与品牌红隔离) */
+    --danger:#FF6B6E; --danger-bg:rgba(255,107,110,.1);
+    --success:#2EDB8B; --warning:#F5B93E; --info:#5AC8FA;
+    --surface:var(--g2); --surface-2:var(--g3); --bg:var(--g0);
+    --brand:var(--red-6); --brand-soft:rgba(254,44,85,.12);
+    --data:var(--cyan-6); --data-soft:rgba(37,244,238,.1);
+    --radius-sm:6px; --radius-md:8px; --radius-lg:12px; --radius-full:999px;
+    --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+    --shadow-md:0 6px 20px rgba(0,0,0,.45);
+    --font:'Inter','PingFang SC','Microsoft YaHei',system-ui,sans-serif;
+    --mono:'JetBrains Mono','SF Mono',Consolas,monospace;
+    --nav-w:236px; --topbar-h:52px;
+  }
+  html[data-theme="light"]{
+    --bg:#F5F6F8; --surface:#FFFFFF; --surface-2:#F7F8FA;
+    --ink:#17181C; --ink-2:#3A3D44; --ink-3:#7A7F89; --ink-4:#A0A5AF;
+    --border:#E4E6EB; --border-soft:#EEF0F3;
+    --brand:var(--red-7); --brand-soft:rgba(254,44,85,.08);
+    --data:#0891A8; --data-soft:rgba(8,145,168,.08);
+    --shadow-sm:0 1px 2px rgba(16,18,24,.05); --shadow-md:0 6px 18px rgba(16,18,24,.08);
+  }
+  /* 专注模式:隐藏强调色与装饰 */
+  html.focus-mode{ --brand:#9BA0AA; --brand-soft:rgba(155,160,170,.1); --data-soft:rgba(155,160,170,.08); }
+  html.focus-mode .brand-mark, html.focus-mode .nbx-actions .btn-draft, html.focus-mode .countdown .num{ filter:grayscale(1) brightness(.9); }
+  html.focus-mode .sidebar{ width:56px; }
+  html.focus-mode .sidebar .brand-name, html.focus-mode .sidebar .brand-sub, html.focus-mode .nav-item span, html.focus-mode .nav-label, html.focus-mode .nav-foot{ display:none; }
+  html.focus-mode .app{ grid-template-columns:56px 1fr; }
+  html.focus-mode .nav-item{ justify-content:center; padding:8px 0; }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{font-family:var(--font);background:var(--bg);color:var(--ink);font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased}
+  svg.ic{display:block}
+  .ic{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+  .app{display:grid;grid-template-columns:var(--nav-w) 1fr;height:100vh;overflow:hidden;transition:grid-template-columns .2s ease}
+
+  /* ===== 侧栏(媒电通:默认 #E8E8EC,激活 品牌红) ===== */
+  .sidebar{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;min-height:0;transition:width .2s ease;overflow:hidden}
+  .brand{display:flex;align-items:center;gap:10px;padding:14px 16px 12px;border-bottom:1px solid var(--border-soft);min-width:220px}
+  .brand-mark{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--red-6),#B01038);display:grid;place-items:center;flex:none}
+  .brand-mark svg{width:17px;height:17px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .brand-name{font-size:13.5px;font-weight:650;white-space:nowrap}
+  .brand-sub{font-size:10.5px;color:var(--ink-4);margin-top:1px;white-space:nowrap}
+  .nav{flex:1;overflow-y:auto;padding:10px 10px 12px;min-width:220px}
+  .nav-label{font-size:10.5px;color:var(--ink-4);font-weight:600;letter-spacing:.08em;padding:14px 10px 6px;text-transform:uppercase;white-space:nowrap}
+  .nav-item{display:flex;align-items:center;gap:9px;padding:6.5px 10px;border-radius:var(--radius-md);color:var(--ink-2);cursor:pointer;font-size:13px;margin-bottom:1px;transition:background .12s,color .12s;user-select:none;white-space:nowrap}
+  .nav-item .ic{color:#E8E8EC;opacity:.75}
+  html[data-theme="light"] .nav-item .ic{color:#3A3D44}
+  .nav-item:hover{background:var(--surface-2);color:var(--ink)}
+  .nav-item:hover .ic{opacity:1}
+  .nav-item.active{background:var(--brand-soft);color:var(--brand);font-weight:550}
+  .nav-item.active .ic{color:var(--brand);opacity:1}
+  .nav-sep{height:1px;background:var(--border-soft);margin:8px 10px}
+  .nav-foot{padding:10px 14px;border-top:1px solid var(--border-soft);font-size:11px;color:var(--ink-4);display:flex;align-items:center;gap:7px;white-space:nowrap;min-width:220px}
+  .nav-foot .dot{width:6px;height:6px;border-radius:50%;background:var(--success);flex:none}
+
+  .main{display:flex;flex-direction:column;min-width:0;min-height:0}
+  .topbar{height:var(--topbar-h);display:flex;align-items:center;gap:12px;padding:0 18px;border-bottom:1px solid var(--border);background:var(--surface);flex:none}
+  .crumb{font-size:12.5px;color:var(--ink-4);display:flex;align-items:center;gap:6px}
+  .crumb b{color:var(--ink-2);font-weight:550}
+  .searchbox{flex:1;max-width:340px;display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-md);padding:5px 10px;cursor:pointer;color:var(--ink-3);font-size:12.5px}
+  .searchbox:hover{border-color:var(--ink-4)}
+  .searchbox kbd{margin-left:auto;font-family:var(--mono);font-size:10px;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:1px 5px;color:var(--ink-4)}
+  .tb-right{margin-left:auto;display:flex;align-items:center;gap:6px}
+  .icon-btn{width:30px;height:30px;border-radius:var(--radius-md);border:1px solid transparent;background:transparent;color:var(--ink-3);display:grid;place-items:center;cursor:pointer;position:relative}
+  .icon-btn:hover{background:var(--surface-2);color:var(--ink)}
+  .icon-btn .ping{position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:var(--brand);border:1.5px solid var(--surface)}
+  .avatar{width:28px;height:28px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;font-size:11px;font-weight:600;margin-left:4px}
+  .btn{display:inline-flex;align-items:center;gap:6px;border-radius:var(--radius-md);border:1px solid transparent;font-family:inherit;font-size:12.5px;font-weight:550;padding:6px 12px;cursor:pointer;white-space:nowrap}
+  .btn .ic{width:14px;height:14px}
+  .btn-primary{background:var(--brand);color:#fff}
+  .btn-primary:hover{background:var(--red-7)}
+  .btn-ghost{background:transparent;border-color:var(--border);color:var(--ink-2)}
+  .btn-ghost:hover{border-color:var(--ink-4);color:var(--ink)}
+  .btn-data{background:var(--data-soft);color:var(--data);border:none}
+  .btn-draft{background:var(--brand-soft);color:var(--brand);border:none}
+  .btn-done{background:transparent;border-color:var(--border);color:var(--ink-3);font-size:12px}
+
+  .content{flex:1;overflow-y:auto;padding:20px 24px 40px}
+  .view{display:none;max-width:1180px;margin:0 auto}
+  .view.active{display:block;animation:fade .18s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm)}
+  .card-pad{padding:16px 18px}
+  .h-row{display:flex;align-items:center;gap:10px}
+  .h-title{font-size:15px;font-weight:650;letter-spacing:-.01em}
+  .muted{color:var(--ink-3)}
+  .chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:550;padding:2px 9px;border-radius:var(--radius-full);border:1px solid var(--border);color:var(--ink-2);background:var(--surface)}
+  .chip.brand{background:var(--brand-soft);border-color:transparent;color:var(--brand)}
+  .chip.data{background:var(--data-soft);border-color:transparent;color:var(--data)}
+  .chip.green{background:rgba(46,219,139,.12);border-color:transparent;color:var(--success)}
+  .chip.warn{background:rgba(245,185,62,.12);border-color:transparent;color:var(--warning)}
+  .chip.danger{background:var(--danger-bg);border-color:transparent;color:var(--danger)}
+  .chip.gray{background:var(--surface-2);color:var(--ink-3)}
+  .dot-flag{width:7px;height:7px;border-radius:50%;display:inline-block;flex:none}
+  .page-head{display:flex;align-items:flex-end;gap:14px;margin-bottom:18px;flex-wrap:wrap}
+  .page-head h1{font-size:21px;font-weight:700;letter-spacing:-.02em}
+  .page-head .date{font-size:12px;color:var(--ink-3);margin-top:2px}
+  .page-head .actions{margin-left:auto;display:flex;gap:8px}
+  .greet{margin:2px 0 0;font-size:13px;color:var(--ink-3)}
+
+  /* 今日驾驶舱 */
+  .today-grid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start}
+  @media(max-width:1080px){.today-grid{grid-template-columns:1fr}}
+  .nbx-item{display:flex;gap:12px;padding:12px 2px;border-bottom:1px solid var(--border-soft);align-items:flex-start}
+  .nbx-item:last-child{border-bottom:none}
+  .prio{width:22px;height:22px;border-radius:var(--radius-sm);display:grid;place-items:center;font-size:11px;font-weight:700;flex:none;margin-top:1px}
+  .prio.hot{background:var(--brand);color:#fff}
+  .prio.warm{background:rgba(245,185,62,.15);color:var(--warning)}
+  .prio.cool{background:var(--data-soft);color:var(--data)}
+  .nbx-body{flex:1;min-width:0}
+  .nbx-title{font-size:13px;font-weight:600}
+  .nbx-title .tag{font-weight:500;color:var(--ink-3)}
+  .nbx-meta{font-size:12px;color:var(--ink-3);margin-top:3px;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
+  .nbx-actions{margin-top:7px;display:flex;gap:6px}
+  .nbx-actions .btn{padding:3.5px 10px;font-size:12px}
+  .side-stack{display:flex;flex-direction:column;gap:16px}
+  .countdown{display:flex;align-items:center;gap:14px;padding:14px 16px}
+  .countdown .num{font-size:26px;font-weight:750;letter-spacing:-.02em;color:var(--brand);font-variant-numeric:tabular-nums}
+  .countdown .lbl{font-size:11.5px;color:var(--ink-3)}
+  .bar-track{height:6px;background:var(--border-soft);border-radius:var(--radius-full);overflow:hidden}
+  .bar-fill{height:100%;border-radius:var(--radius-full);background:var(--data)}
+  .mini-row{display:flex;align-items:center;gap:8px;font-size:12px;padding:6.5px 0;color:var(--ink-2)}
+  .mini-row time{font-family:var(--mono);font-size:11px;color:var(--ink-4);width:44px;flex:none}
+  .mini-row .ev{flex:1}
+  .alert-strip{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+  @media(max-width:900px){.alert-strip{grid-template-columns:1fr}}
+  .alert-line{display:flex;gap:10px;padding:9px 0;align-items:center;border-bottom:1px solid var(--border-soft);font-size:12.5px}
+  .alert-line:last-child{border-bottom:none}
+  .alert-line .txt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .alert-line .amt{font-weight:650;font-variant-numeric:tabular-nums}
+  .alert-line time{color:var(--ink-4);font-size:11px;font-family:var(--mono)}
+
+  /* CRM */
+  .funnel{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:16px}
+  .fseg{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:9px 12px;display:flex;flex-direction:column;gap:2px;position:relative;box-shadow:var(--shadow-sm)}
+  .fseg .n{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
+  .fseg .l{font-size:10.5px;color:var(--ink-3)}
+  .fseg::after{content:"";position:absolute;right:-7px;top:50%;width:6px;height:6px;border-top:1.5px solid var(--ink-4);border-right:1.5px solid var(--ink-4);transform:translateY(-50%) rotate(45deg)}
+  .fseg:last-child::after{display:none}
+  .fseg.hot .n{color:var(--brand)}
+  .toolbar-row{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+  .filter-input{display:flex;align-items:center;gap:7px;border:1px solid var(--border);border-radius:var(--radius-md);padding:5px 10px;background:var(--surface);color:var(--ink-3);font-size:12.5px;flex:1;min-width:150px;max-width:230px}
+  table.grid{width:100%;border-collapse:collapse}
+  table.grid th{font-size:10.5px;color:var(--ink-4);font-weight:600;letter-spacing:.05em;text-align:left;padding:6px 10px;border-bottom:1px solid var(--border);text-transform:uppercase}
+  table.grid td{padding:8px 10px;border-bottom:1px solid var(--border-soft);font-size:12.8px}
+  table.grid tbody tr{cursor:pointer}
+  table.grid tbody tr:hover{background:var(--surface-2)}
+  table.grid tbody tr.sel{background:var(--brand-soft)}
+  .cname{font-weight:600}
+  .cname .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:7px}
+  .cell-num{font-variant-numeric:tabular-nums;font-weight:550}
+  .mini-hp{display:flex;align-items:center;gap:7px}
+  .hp-dot{width:26px;height:5px;border-radius:3px;background:var(--border-soft);position:relative;overflow:hidden}
+  .hp-dot i{position:absolute;left:0;top:0;bottom:0;border-radius:3px}
+  .hp-dot i.good{background:var(--success);width:86%}
+  .hp-dot i.mid{background:var(--warning);width:62%}
+  .hp-dot i.low{background:var(--danger);width:34%}
+  .hp-val{font-size:11px;font-weight:600;font-variant-numeric:tabular-nums}
+
+  /* 抽屉式 360 */
+  .drawer-mask{position:fixed;inset:0;background:rgba(6,8,12,.55);z-index:50;opacity:0;pointer-events:none;transition:opacity .2s}
+  .drawer-mask.open{opacity:1;pointer-events:auto}
+  .drawer{position:fixed;top:0;right:-480px;width:460px;max-width:92vw;height:100vh;background:var(--surface);border-left:1px solid var(--border);z-index:51;transition:right .22s ease;display:flex;flex-direction:column;box-shadow:var(--shadow-md)}
+  .drawer.open{right:0}
+  .drawer-head{display:flex;gap:12px;align-items:center;padding:16px 18px;border-bottom:1px solid var(--border-soft)}
+  .detail-avatar{width:42px;height:42px;border-radius:10px;background:var(--g4);color:var(--ink);display:grid;place-items:center;font-weight:700;font-size:15px;border:1px solid var(--border)}
+  .detail-title{font-size:16px;font-weight:700}
+  .detail-sub{font-size:11.5px;color:var(--ink-3);margin-top:2px;display:flex;gap:6px;flex-wrap:wrap}
+  .drawer-body{flex:1;overflow-y:auto;padding-bottom:20px}
+  .dtabs{display:flex;gap:4px;padding:10px 18px 0;border-bottom:1px solid var(--border-soft)}
+  .dtab{padding:6px 12px;font-size:12.5px;color:var(--ink-3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:550}
+  .dtab.active{color:var(--brand);border-bottom-color:var(--brand)}
+  .kv-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;padding:14px 18px}
+  .kv .k{font-size:10.5px;color:var(--ink-4);font-weight:600;letter-spacing:.03em}
+  .kv .v{font-size:13px;font-weight:550;font-variant-numeric:tabular-nums}
+  .score-ring-wrap{display:flex;align-items:center;gap:12px;grid-column:1/-1;border-bottom:1px solid var(--border-soft);padding-bottom:12px;margin-bottom:2px}
+  .ring{transform:rotate(-90deg)}
+  .ring .bg{stroke:var(--g4);fill:none;stroke-width:5}
+  .ring .fg{stroke:var(--success);fill:none;stroke-width:5;stroke-linecap:round}
+  .score-num{font-size:22px;font-weight:750;font-variant-numeric:tabular-nums}
+  .score-lbl{font-size:10.5px;color:var(--ink-4)}
+  .chain{padding:4px 18px 8px}
+  .chain-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px dashed var(--border-soft)}
+  .chain-row:last-child{border-bottom:none}
+  .chain-avatar{width:30px;height:30px;border-radius:50%;background:var(--g4);border:1px solid var(--border);display:grid;place-items:center;font-size:11px;font-weight:650;color:var(--ink-2);flex:none}
+  .chain-role{margin-left:auto}
+  .tl-item{display:flex;gap:10px;position:relative;padding:0 18px 14px}
+  .tl-item::before{content:"";position:absolute;left:23.5px;top:14px;bottom:2px;width:1px;background:var(--border-soft)}
+  .tl-item:last-child::before{display:none}
+  .tl-dot{width:12px;height:12px;border-radius:50%;border:2.5px solid var(--surface);background:var(--ink-4);flex:none;margin-top:2px;z-index:1}
+  .tl-title{font-size:12.8px;font-weight:550}
+  .tl-sub{font-size:11.5px;color:var(--ink-3);margin-top:1px}
+  .tl-time{font-size:10.5px;color:var(--ink-4);font-family:var(--mono);margin-top:1px}
+  .drawer-foot{padding:12px 18px;border-top:1px solid var(--border-soft);display:flex;gap:8px}
+
+  /* 媒介 */
+  .media-tabs{display:flex;gap:4px;margin-bottom:14px;border-bottom:1px solid var(--border)}
+  .mtab{padding:7px 14px;font-size:12.8px;color:var(--ink-3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:550}
+  .mtab.active{color:var(--brand);border-bottom-color:var(--brand)}
+  .month-lbls{display:grid;grid-template-columns:repeat(4,1fr);padding:8px 0 2px;color:var(--ink-3);font-size:11px;font-weight:550}
+  .sched-head{display:grid;grid-template-columns:190px 1fr;border-bottom:1px solid var(--border);font-size:10.5px;color:var(--ink-4);font-weight:650;letter-spacing:.05em}
+  .sched-mline{display:grid;grid-template-columns:190px 1fr;font-size:12.5px}
+  .sched-mline .mname{padding:11px 14px;border-bottom:1px solid var(--border-soft);font-weight:600;display:flex;align-items:center;gap:8px}
+  .sched-track{position:relative;border-bottom:1px solid var(--border-soft);height:42px}
+  .sched-gridlines{position:absolute;inset:0;display:grid;grid-template-columns:repeat(4,1fr)}
+  .sched-gridlines i{border-left:1px dashed var(--border-soft)}
+  .sched-bar{position:absolute;top:11px;height:20px;border-radius:6px;display:flex;align-items:center;padding:0 10px;font-size:11px;font-weight:600;color:#fff;white-space:nowrap;z-index:1}
+  .sched-bar .wk{font-weight:400;opacity:.85;margin-left:6px;font-size:10px}
+
+  /* 数据分析 */
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px}
+  @media(max-width:1080px){.kpis{grid-template-columns:repeat(2,1fr)}}
+  .kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px}
+  .kpi .lbl{font-size:11px;color:var(--ink-3);margin-bottom:6px}
+  .kpi .val{font-size:23px;font-weight:750;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  .kpi .delta{font-size:11.5px;margin-top:3px}
+  .up{color:var(--success)} .down{color:var(--danger)}
+  .chart-grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:16px}
+  @media(max-width:1080px){.chart-grid{grid-template-columns:1fr}}
+  .chart-svg{width:100%;height:190px;margin-top:8px}
+  .axis-lbl{font:10px var(--mono);fill:var(--ink-4)}
+  .chart-line{fill:none;stroke:var(--data);stroke-width:2.2;stroke-linejoin:round}
+  .chart-area{fill:var(--data);opacity:.08}
+  .rank-row{display:flex;align-items:center;gap:10px;padding:8.5px 0;border-bottom:1px solid var(--border-soft);font-size:12.8px}
+  .rank-row:last-child{border-bottom:none}
+  .rank-no{width:16px;height:16px;border-radius:5px;background:var(--surface-2);color:var(--ink-3);font-size:10px;font-weight:700;display:grid;place-items:center}
+  .rank-no.cur{background:var(--brand);color:#fff}
+  .rank-row .rname{flex:1;font-weight:550}
+  .rank-row .rval{font-variant-numeric:tabular-nums;font-weight:650;width:52px;text-align:right}
+  .rank-row .rsub{font-size:10.5px;color:var(--ink-4);width:70px;text-align:right;font-variant-numeric:tabular-nums}
+
+  /* 设计令牌展示 */
+  .tok-row{display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap}
+  .tok{display:flex;flex-direction:column;align-items:center;gap:4px}
+  .tok i{width:38px;height:38px;border-radius:8px;border:1px solid var(--border)}
+  .tok span{font-size:9.5px;color:var(--ink-4);font-family:var(--mono)}
+
+  /* 快速采集弹层 */
+  .quick-mask{position:fixed;inset:0;background:rgba(6,8,12,.55);z-index:60;display:none;align-items:flex-start;justify-content:center;padding-top:12vh}
+  .quick-mask.open{display:flex}
+  .quick-panel{width:560px;max-width:92vw;background:var(--surface);border-radius:var(--radius-lg);border:1px solid var(--border);box-shadow:var(--shadow-md);overflow:hidden}
+  .quick-input{display:flex;align-items:center;gap:9px;padding:13px 15px;border-bottom:1px solid var(--border)}
+  .quick-input input{flex:1;border:none;outline:none;background:transparent;font:inherit;font-size:14px;color:var(--ink)}
+  .quick-types{display:flex;gap:6px;padding:12px 15px;flex-wrap:wrap}
+  .qtype{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:5px 11px;border-radius:var(--radius-full);border:1px solid var(--border);color:var(--ink-3);cursor:pointer}
+  .qtype.sel{background:var(--brand-soft);border-color:transparent;color:var(--brand);font-weight:600}
+  .quick-foot{display:flex;align-items:center;gap:10px;padding:10px 15px;border-top:1px solid var(--border);font-size:11px;color:var(--ink-4)}
+  .quick-foot .btn{margin-left:auto}
+
+  .ph{display:grid;place-items:center;min-height:56vh;text-align:center;padding:40px}
+  .ph .big{width:52px;height:52px;border-radius:14px;background:var(--surface);border:1px solid var(--border);display:grid;place-items:center;color:var(--ink-4);margin:0 auto 14px}
+  .ph h2{font-size:16px;font-weight:650;margin-bottom:6px}
+  .ph p{font-size:12.5px;color:var(--ink-3);max-width:340px}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark"><svg viewBox="0 0 24 24"><path d="M3 12h5l2-7 4 14 2-7h5"/></svg></div>
+      <div><div class="brand-name">媒电通工作台</div><div class="brand-sub">MediaDesk · 原型 V2</div></div>
+    </div>
+    <nav class="nav">
+      <div class="nav-label">工作区</div>
+      <div class="nav-item active" data-v="today"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4m11.4-11.4 1.4-1.4"/></svg><span>今日驾驶舱</span></div>
+      <div class="nav-item" data-v="quick" id="nav-quick"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>快速采集</span></div>
+      <div class="nav-sep"></div>
+      <div class="nav-label">八大模块</div>
+      <div class="nav-item" data-v="crm"><svg class="ic" viewBox="0 0 24 24"><circle cx="9" cy="8.4" r="3.4"/><path d="M2.8 19.6c.9-3.5 3.5-5.3 6.2-5.3s5.3 1.8 6.2 5.3"/><circle cx="17" cy="9.2" r="2.6"/><path d="M16.6 14.6c2.5.3 4.4 1.8 5.2 4.6"/></svg><span>CRM 客户管理</span></div>
+      <div class="nav-item" data-v="kb"><svg class="ic" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span>知识学习系统</span></div>
+      <div class="nav-item" data-v="todo"><svg class="ic" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5"/><path d="M8.5 12.2l2.4 2.4 4.6-5"/></svg><span>工作管理系统</span></div>
+      <div class="nav-item" data-v="dev"><svg class="ic" viewBox="0 0 24 24"><path d="M4 5.5h16l-6 7v5.4l-4 2v-7.4z"/></svg><span>客户开发系统</span></div>
+      <div class="nav-item" data-v="media"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9.2l5 2.8-5 2.8z"/></svg><span>媒介策略中心</span></div>
+      <div class="nav-item" data-v="data"><svg class="ic" viewBox="0 0 24 24"><path d="M18.5 20V10M12.5 20V4M6.5 20v-6M2.8 20h18.4"/></svg><span>数据分析报表</span></div>
+      <div class="nav-item" data-v="growth"><svg class="ic" viewBox="0 0 24 24"><path d="M3 17.5l6-6 4 4 8-8.5"/><path d="M15.5 7H21v5.5"/></svg><span>个人成长规划</span></div>
+      <div class="nav-sep"></div>
+      <div class="nav-item" data-v="sys"><svg class="ic" viewBox="0 0 24 24"><path d="M5 21V11M5 7V3M12 21v-5M12 12V3M19 21v-9M19 8V3"/><circle cx="5" cy="9" r="2"/><circle cx="12" cy="14" r="2"/><circle cx="19" cy="10" r="2"/></svg><span>系统管理</span></div>
+    </nav>
+    <div class="nav-foot"><span class="dot"></span>本地存储 · AI 本地/云融合</div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="crumb">媒电通工作台 <span>›</span> <b id="crumb-cur">今日驾驶舱</b></div>
+      <div class="searchbox" id="cmd-trigger"><svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px"><circle cx="11" cy="11" r="7"/><path d="M20.5 20.5 16.5 16.5"/></svg>搜索客户、商机、笔记… <kbd>Ctrl K</kbd></div>
+      <div class="tb-right">
+        <button class="icon-btn" id="focus-btn" title="专注模式"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5"/></svg></button>
+        <button class="icon-btn" title="AI 助手"><svg class="ic" viewBox="0 0 24 24"><path d="M12 3.5l1.9 5.6 5.6 1.9-5.6 1.9L12 18.5l-1.9-5.6-5.6-1.9 5.6-1.9z"/></svg></button>
+        <button class="icon-btn" title="通知"><svg class="ic" viewBox="0 0 24 24"><path d="M6.2 8.5a5.8 5.8 0 0 1 11.6 0c0 6.2 2.7 7.3 2.7 7.3H3.5s2.7-1.1 2.7-7.3"/><path d="M10.2 20.2a1.9 1.9 0 0 0 3.6 0"/></svg><span class="ping"></span></button>
+        <button class="icon-btn" id="theme-btn" title="明暗主题"><svg class="ic" id="theme-ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4m11.4-11.4 1.4-1.4"/></svg></button>
+        <div class="avatar">A</div>
+      </div>
+    </header>
+
+    <main class="content">
+      <!-- 今日驾驶舱 -->
+      <section class="view active" id="v-today">
+        <div class="page-head">
+          <div>
+            <h1>今日驾驶舱</h1>
+            <div class="date">2026 年 9 月 8 日 周二 · 距 Q4 预算季 23 天 · 距双11 预热 42 天</div>
+            <div class="greet">下午好 — 3 个关键跟进、1 笔逾期回款,已按优先级排好。</div>
+          </div>
+          <div class="actions">
+            <button class="btn btn-primary" onclick="openQuick()"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>快速采集</button>
+          </div>
+        </div>
+        <div class="today-grid">
+          <div class="card card-pad" style="padding-top:14px">
+            <div class="h-row" style="margin-bottom:4px">
+              <span class="h-title">AI 建议 · 今天最该做的</span>
+              <span class="chip brand">Next-Best-Action</span>
+              <span class="muted" style="margin-left:auto;font-size:11.5px">沉默天数 × 客户价值 × 阶段 · 本地模型</span>
+            </div>
+            <div>
+              <div class="nbx-item">
+                <div class="prio hot">1</div>
+                <div class="nbx-body">
+                  <div class="nbx-title">跟进「盛达集团」报价 <span class="tag">· 商机 ¥380,000</span></div>
+                  <div class="nbx-meta"><span class="dot-flag" style="background:var(--danger)"></span>已沉默 23 天 · 上次 8/16 报价邮件 · 阶段:报价谈判</div>
+                  <div class="nbx-actions"><button class="btn btn-draft">生成跟进话术草稿</button><button class="btn btn-done">已完成</button><button class="btn btn-done">改期</button></div>
+                </div>
+                <span class="chip">A 级客户</span>
+              </div>
+              <div class="nbx-item">
+                <div class="prio warm">2</div>
+                <div class="nbx-body">
+                  <div class="nbx-title">双11 排期确认 <span class="tag">· 云裳服饰 · 媒介执行</span></div>
+                  <div class="nbx-meta"><span class="dot-flag" style="background:var(--warning)"></span>客户确认截止 9/10 · 3 个媒体位待锁定 · 预算 ¥120 万</div>
+                  <div class="nbx-actions"><button class="btn btn-draft">打开排期表</button><button class="btn btn-done">已发确认函</button></div>
+                </div>
+                <span class="chip warn">D-2</span>
+              </div>
+              <div class="nbx-item">
+                <div class="prio warm">3</div>
+                <div class="nbx-body">
+                  <div class="nbx-title">催收「星海互动」回款 <span class="tag">· 应收 ¥180,000</span></div>
+                  <div class="nbx-meta"><span class="dot-flag" style="background:var(--warning)"></span>账期 60 天,逾期 12 天 · 合同 HT-2026-041</div>
+                  <div class="nbx-actions"><button class="btn btn-draft">生成催款函(客户版脱敏)</button><button class="btn btn-done">已联系</button></div>
+                </div>
+                <span class="chip danger">逾期</span>
+              </div>
+              <div class="nbx-item">
+                <div class="prio cool">4</div>
+                <div class="nbx-body">
+                  <div class="nbx-title">学习 30 分钟 <span class="tag">· 信息流投放归因</span></div>
+                  <div class="nbx-meta">与云裳项目强相关 · 本周 85/120 分钟</div>
+                  <div class="nbx-actions"><button class="btn btn-done">开始学习</button></div>
+                </div>
+              </div>
+              <div class="nbx-item">
+                <div class="prio cool">5</div>
+                <div class="nbx-body">
+                  <div class="nbx-title">第 36 周 AAR 复盘 <span class="tag">· 数据已自动预填</span></div>
+                  <div class="nbx-meta">3 个商机未推进、1 个比稿失败 —— 待补原因与经验</div>
+                  <div class="nbx-actions"><button class="btn btn-done">继续复盘</button></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="side-stack">
+            <div class="card">
+              <div class="countdown">
+                <div class="num">42<span style="font-size:13px;font-weight:600;color:var(--ink-3)">天</span></div>
+                <div>
+                  <div class="lbl">下一个营销节点</div>
+                  <div style="font-size:13.5px;font-weight:650;margin-top:2px">双11 预热投放</div>
+                  <div class="lbl" style="margin-top:2px">2026-10-20 起 · 3 个项目待排期</div>
+                </div>
+              </div>
+              <div style="padding:0 16px 12px"><div class="bar-track"><div class="bar-fill" style="width:42%;background:var(--brand)"></div></div>
+              <div style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--ink-4);margin-top:5px"><span>9/8</span><span>10/20 预热</span><span>11/11 爆发</span></div></div>
+            </div>
+            <div class="card card-pad">
+              <div class="h-row" style="margin-bottom:8px"><span class="h-title" style="font-size:13.5px">季度 KR 进度</span><span class="chip gray" style="margin-left:auto">Q3</span></div>
+              <div style="font-size:12px;margin-bottom:6px;display:flex;justify-content:space-between"><span class="muted">签约额 ¥680 万</span><b>68%</b></div>
+              <div class="bar-track" style="margin-bottom:12px"><div class="bar-fill" style="width:68%"></div></div>
+              <div style="font-size:12px;margin-bottom:6px;display:flex;justify-content:space-between"><span class="muted">新签客户 8 家</span><b>50%</b></div>
+              <div class="bar-track" style="margin-bottom:12px"><div class="bar-fill" style="width:50%"></div></div>
+              <div style="font-size:12px;margin-bottom:6px;display:flex;justify-content:space-between"><span class="muted">回款率 ≥ 90%</span><b class="down">83%</b></div>
+              <div class="bar-track"><div class="bar-fill" style="width:83%;background:var(--warning)"></div></div>
+            </div>
+            <div class="card card-pad">
+              <div class="h-row" style="margin-bottom:6px"><span class="h-title" style="font-size:13.5px">今日日程</span><span class="muted" style="margin-left:auto;font-size:11px">时间块</span></div>
+              <div class="mini-row"><time>09:30</time><span class="ev">拜访 云裳服饰 陈总(媒介总监)</span></div>
+              <div class="mini-row"><time>14:00</time><span class="ev">比稿内部评审 — 新车上市</span></div>
+              <div class="mini-row"><time>16:30</time><span class="ev">电梯媒体 Q4 框架谈判</span></div>
+              <div class="mini-row"><time>19:00</time><span class="ev">学习 · 信息流归因</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="alert-strip">
+          <div class="card card-pad">
+            <div class="h-row" style="margin-bottom:6px"><span class="h-title" style="font-size:13.5px">预警</span><span class="chip danger" style="margin-left:auto">需关注</span></div>
+            <div class="alert-line"><span class="dot-flag" style="background:var(--danger)"></span><span class="txt">健康度下降:<b>星海互动</b> 62→48(回款逾期拖累)</span><time>今天</time></div>
+            <div class="alert-line"><span class="dot-flag" style="background:var(--warning)"></span><span class="txt">关键联系人变动:<b>悦己美妆</b> 决策人疑似离职</span><time>2 小时前</time></div>
+            <div class="alert-line"><span class="dot-flag" style="background:var(--warning)"></span><span class="txt">框架协议到期:<b>腾达传媒</b> 年框 9/30 到期</span><time>3 天前</time></div>
+          </div>
+          <div class="card card-pad">
+            <div class="h-row" style="margin-bottom:6px"><span class="h-title" style="font-size:13.5px">待回款</span><span class="chip warn" style="margin-left:auto">2 笔逾期</span></div>
+            <div class="alert-line"><span class="txt">星海互动 · 尾款</span><span class="amt">¥180,000</span><time>逾期12天</time></div>
+            <div class="alert-line"><span class="txt">蓝湾文旅 · 首款</span><span class="amt">¥60,000</span><time>逾期3天</time></div>
+            <div class="alert-line"><span class="txt">盛达集团 · 订金</span><span class="amt">¥95,000</span><time>5天后到期</time></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CRM -->
+      <section class="view" id="v-crm">
+        <div class="page-head">
+          <div><h1>CRM 客户管理</h1><div class="date">客户 128 · 高价值 23 · 本月新增 6 · 点击行打开 360° 抽屉</div></div>
+          <div class="actions">
+            <button class="btn btn-ghost">筛选视图 ▾</button>
+            <button class="btn btn-primary"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>新增客户</button>
+          </div>
+        </div>
+        <div class="funnel">
+          <div class="fseg hot"><span class="n">24</span><span class="l">线索</span></div>
+          <div class="fseg"><span class="n">15</span><span class="l">MQL</span></div>
+          <div class="fseg"><span class="n">9</span><span class="l">SQL</span></div>
+          <div class="fseg"><span class="n">6</span><span class="l">商机 · ¥214万</span></div>
+          <div class="fseg"><span class="n">3</span><span class="l">签约 · ¥96万</span></div>
+        </div>
+        <div class="card" style="overflow:hidden">
+          <div class="toolbar-row" style="padding:12px 14px 0;margin-bottom:4px">
+            <div class="filter-input"><svg class="ic" viewBox="0 0 24 24" style="width:13px;height:13px"><circle cx="11" cy="11" r="7"/><path d="M20.5 20.5 16.5 16.5"/></svg>搜索客户 / 联系人…</div>
+            <button class="btn btn-ghost" style="padding:4px 10px;font-size:12px">所有阶段 ▾</button>
+            <button class="btn btn-ghost" style="padding:4px 10px;font-size:12px">标签 ▾</button>
+            <button class="btn btn-data" style="padding:4px 10px;font-size:12px;margin-left:auto">保存为视图</button>
+          </div>
+          <table class="grid">
+            <thead><tr><th style="width:20%">客户</th><th>行业</th><th>等级</th><th>健康度</th><th>阶段</th><th style="text-align:right">商机额</th><th>最近跟进</th></tr></thead>
+            <tbody>
+              <tr class="sel" onclick="openDrawer()"><td><div class="cname"><span class="dot" style="background:var(--brand)"></span>盛达集团</div><div style="font-size:11px;color:var(--ink-4)">张伟 · 市场总监</div></td><td>美妆日化</td><td><span class="chip brand">A</span></td><td><div class="mini-hp"><div class="hp-dot"><i class="good"></i></div><span class="hp-val" style="color:var(--success)">86</span></div></td><td><span class="chip warn">报价</span></td><td class="cell-num" style="text-align:right">¥38 万</td><td style="color:var(--ink-3);font-size:11.5px">8/16</td></tr>
+              <tr onclick="openDrawer()"><td><div class="cname"><span class="dot" style="background:var(--success)"></span>云裳服饰</div><div style="font-size:11px;color:var(--ink-4)">陈静 · 媒介总监</div></td><td>服饰鞋包</td><td><span class="chip brand">A</span></td><td><div class="mini-hp"><div class="hp-dot"><i class="good"></i></div><span class="hp-val" style="color:var(--success)">92</span></div></td><td><span class="chip green">签约</span></td><td class="cell-num" style="text-align:right">¥120 万</td><td style="color:var(--ink-3);font-size:11.5px">今天</td></tr>
+              <tr onclick="openDrawer()"><td><div class="cname"><span class="dot" style="background:var(--danger)"></span>星海互动</div><div style="font-size:11px;color:var(--ink-4)">李莉 · 采购负责人</div></td><td>互联网</td><td><span class="chip gray">B</span></td><td><div class="mini-hp"><div class="hp-dot"><i class="low"></i></div><span class="hp-val" style="color:var(--danger)">48</span></div></td><td><span class="chip gray">流失预警</span></td><td class="cell-num" style="text-align:right">¥18 万</td><td style="color:var(--ink-3);font-size:11.5px">9/3</td></tr>
+              <tr onclick="openDrawer()"><td><div class="cname"><span class="dot" style="background:var(--warning)"></span>悦己美妆</div><div style="font-size:11px;color:var(--ink-4)">王芳 · 品牌经理</div></td><td>美妆日化</td><td><span class="chip brand">A</span></td><td><div class="mini-hp"><div class="hp-dot"><i class="mid"></i></div><span class="hp-val" style="color:var(--warning)">64</span></div></td><td><span class="chip data">商机</span></td><td class="cell-num" style="text-align:right">¥56 万</td><td style="color:var(--ink-3);font-size:11.5px">9/6</td></tr>
+              <tr onclick="openDrawer()"><td><div class="cname"><span class="dot" style="background:var(--info)"></span>蓝湾文旅</div><div style="font-size:11px;color:var(--ink-4)">赵磊 · 副总</div></td><td>文旅</td><td><span class="chip gray">B</span></td><td><div class="mini-hp"><div class="hp-dot"><i class="mid"></i></div><span class="hp-val" style="color:var(--warning)">61</span></div></td><td><span class="chip warn">报价</span></td><td class="cell-num" style="text-align:right">¥12 万</td><td style="color:var(--ink-3);font-size:11.5px">9/4</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 媒介 -->
+      <section class="view" id="v-media">
+        <div class="page-head">
+          <div><h1>媒介策略中心</h1><div class="date">策略分析 · 执行管理 · 投后评估 — 云裳服饰 · 双11 Campaign</div></div>
+          <div class="actions"><button class="btn btn-ghost">导出排期表 Excel</button><button class="btn btn-primary">新建排期</button></div>
+        </div>
+        <div class="media-tabs"><div class="mtab active">排期总览</div><div class="mtab">资源库与报价</div><div class="mtab">投放监测</div><div class="mtab">Post-Buy 复盘</div></div>
+        <div class="card" style="overflow:hidden;padding:16px 18px 12px">
+          <div class="h-row" style="margin-bottom:12px">
+            <span class="h-title">媒介排期 · 双11</span>
+            <span class="muted" style="font-size:12px">总预算 ¥1,200,000</span>
+            <div style="margin-left:auto;display:flex;gap:6px"><span class="chip green">已确认 6</span><span class="chip warn">待确认 3</span><span class="chip gray">返点后返 ¥86,000 未核销</span></div>
+          </div>
+          <div class="month-lbls"><span>9 月</span><span>10 月</span><span>11 月</span><span>12 月</span></div>
+          <div class="sched-head"><span style="padding:6px 14px">媒体 / 点位</span><span style="padding:6px 14px">投放窗口</span></div>
+          <div class="sched-mline"><div class="mname"><span class="dot-flag" style="background:var(--data)"></span>信息流投放 A <span style="margin-left:auto;font-weight:400;color:var(--ink-4);font-size:11px">CPM ¥58</span></div><div class="sched-track"><div class="sched-gridlines"><i></i><i></i><i></i><i></i></div><div class="sched-bar" style="left:0%;width:100%;background:var(--data);color:#08282B">品牌广告 + 达人引流<span class="wk">¥420,000</span></div></div></div>
+          <div class="sched-mline"><div class="mname"><span class="dot-flag" style="background:var(--brand)"></span>种草投放 B <span style="margin-left:auto;font-weight:400;color:var(--ink-4);font-size:11px">CPE ¥12</span></div><div class="sched-track"><div class="sched-gridlines"><i></i><i></i><i></i><i></i></div><div class="sched-bar" style="left:0%;width:62%;background:var(--brand)">达人矩阵 30 篇<span class="wk">¥260,000</span></div><div class="sched-bar" style="left:62%;width:38%;background:var(--red-4);color:#33141B">信息流放大<span class="wk">¥150,000</span></div></div></div>
+          <div class="sched-mline"><div class="mname"><span class="dot-flag" style="background:#8B7CF6"></span>效果投放 C <span style="margin-left:auto;font-weight:400;color:var(--ink-4);font-size:11px">CPM ¥66</span></div><div class="sched-track"><div class="sched-gridlines"><i></i><i></i><i></i><i></i></div><div class="sched-bar" style="left:38%;width:37%;background:#8B7CF6">大促爆发期<span class="wk">¥180,000</span></div></div></div>
+          <div class="sched-mline"><div class="mname"><span class="dot-flag" style="background:var(--ink-4)"></span>线下媒体(框架) <span style="margin-left:auto;font-weight:400;color:var(--ink-4);font-size:11px">刊例 6.2 折</span></div><div class="sched-track"><div class="sched-gridlines"><i></i><i></i><i></i><i></i></div><div class="sched-bar" style="left:30%;width:45%;background:var(--g5)">城市 8 城 · 年框<span class="wk">¥190,000</span></div></div></div>
+        </div>
+        <div class="alert-strip">
+          <div class="card card-pad">
+            <div class="h-row" style="margin-bottom:8px"><span class="h-title" style="font-size:13.5px">采购与报价(内部)</span><span class="chip gray" style="margin-left:auto">仅内部可见</span></div>
+            <div class="alert-line"><span class="txt">媒体成本合计(对外隐藏)</span><span class="amt">¥736,000</span></div>
+            <div class="alert-line"><span class="txt">报价给客户</span><span class="amt">¥1,200,000</span></div>
+            <div class="alert-line"><span class="txt">预估毛利</span><span class="amt" style="color:var(--success)">¥464,000(38.7%)</span></div>
+            <div class="alert-line"><span class="txt">返点后返(未核销)</span><span class="amt" style="color:var(--warning)">¥86,000</span></div>
+          </div>
+          <div class="card card-pad">
+            <div class="h-row" style="margin-bottom:8px"><span class="h-title" style="font-size:13.5px">策略推导依据</span><span class="chip data" style="margin-left:auto">AI 策略 Agent</span></div>
+            <div style="font-size:12.3px;color:var(--ink-2);line-height:1.7">依据:受众画像、竞品监测、历史 Post-Buy(去年双11 ROI 1:4.2)。建议配比 <b>内容种草 45% / 效果投放 35% / 品牌曝光 20%</b>。<div style="margin-top:8px;font-size:11px;color:var(--ink-4)">溯源:知识库 3 条 · 2025-Q4 历史数据 · 本地模型</div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 数据分析 -->
+      <section class="view" id="v-data">
+        <div class="page-head">
+          <div><h1>数据分析报表</h1><div class="date">北极星:月签单额 · 口径:合同签约额 · 图表主色:品牌数据青</div></div>
+          <div class="actions"><button class="btn btn-ghost">2026 年 ▾</button><button class="btn btn-primary">生成月度复盘</button></div>
+        </div>
+        <div class="kpis">
+          <div class="kpi"><div class="lbl">本月签约额</div><div class="val">¥96 万</div><div class="delta up">▲ 目标 64% · 剩 12 工作日</div></div>
+          <div class="kpi"><div class="lbl">在谈商机(加权)</div><div class="val">¥214 万</div><div class="delta">加权预测 ¥89 万</div></div>
+          <div class="kpi"><div class="lbl">回款率(本季)</div><div class="val">83%</div><div class="delta down">▼ 低于目标 90%</div></div>
+          <div class="kpi"><div class="lbl">综合毛利率</div><div class="val">36.2%</div><div class="delta up">▲ 环比 +1.8pp</div></div>
+        </div>
+        <div class="chart-grid">
+          <div class="card card-pad">
+            <div class="h-row"><span class="h-title">签约额趋势(近 12 个月)</span><span class="muted" style="margin-left:auto;font-size:11.5px">单位:万元 · 青=数据系列</span></div>
+            <svg class="chart-svg" viewBox="0 0 560 190" preserveAspectRatio="none">
+              <line x1="30" y1="10" x2="30" y2="160" stroke="var(--border-soft)"/>
+              <polyline class="chart-area" points="30,160 74,158 118,150 162,140 206,146 250,120 294,128 338,96 382,104 426,72 470,80 514,46 548,34 548,160 30,160"/>
+              <polyline class="chart-line" points="30,160 74,158 118,150 162,140 206,146 250,120 294,128 338,96 382,104 426,72 470,80 514,46 548,34"/>
+              <circle cx="548" cy="34" r="4" fill="var(--data)"/>
+              <text x="40" y="176" class="axis-lbl">2025-09</text><text x="270" y="176" class="axis-lbl">2026-02</text><text x="500" y="176" class="axis-lbl">2026-08</text>
+            </svg>
+          </div>
+          <div class="card card-pad">
+            <div class="h-row" style="margin-bottom:4px"><span class="h-title">ROI 排名 · 渠道</span><span class="chip gray" style="margin-left:auto">红=当前选中</span></div>
+            <div class="rank-row"><span class="rank-no">1</span><span class="rname">渠道 A · 信息流</span><span class="rval" style="color:var(--success)">1:4.2</span><span class="rsub">CPM ¥58</span></div>
+            <div class="rank-row"><span class="rank-no cur">2</span><span class="rname">渠道 B · 种草</span><span class="rval" style="color:var(--success)">1:3.6</span><span class="rsub">CPE ¥12</span></div>
+            <div class="rank-row"><span class="rank-no">3</span><span class="rname">渠道 C · 线下</span><span class="rval">1:2.1</span><span class="rsub">CPM ¥52</span></div>
+            <div class="rank-row"><span class="rank-no">4</span><span class="rname">渠道 D · 效果</span><span class="rval" style="color:var(--danger)">1:0.9</span><span class="rsub">CPM ¥66</span></div>
+            <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border-soft);font-size:11.5px;color:var(--ink-3)">行业基准:CPM ¥45-70 · ROI ≥ 1:2.5 为健康(基准表可维护)</div>
+          </div>
+        </div>
+        <div class="card card-pad" style="margin-top:16px">
+          <div class="h-row" style="margin-bottom:10px"><span class="h-title">设计令牌 · 抖音品牌色推导色阶</span><span class="chip gray" style="margin-left:auto">FE2C55 / 25F4EE 官方值 · 其余为推导,待甲方确认</span></div>
+          <div class="tok-row">
+            <div class="tok"><i style="background:var(--red-0)"></i><span>red-0</span></div>
+            <div class="tok"><i style="background:var(--red-1)"></i><span>red-1</span></div>
+            <div class="tok"><i style="background:var(--red-2)"></i><span>red-2</span></div>
+            <div class="tok"><i style="background:var(--red-3)"></i><span>red-3</span></div>
+            <div class="tok"><i style="background:var(--red-4)"></i><span>red-4</span></div>
+            <div class="tok"><i style="background:var(--red-5)"></i><span>red-5</span></div>
+            <div class="tok"><i style="background:var(--red-6);border-color:var(--red-6);outline:2px solid var(--ink-4)"></i><span>#FE2C55</span></div>
+            <div class="tok"><i style="background:var(--red-7)"></i><span>red-7</span></div>
+            <div style="width:18px"></div>
+            <div class="tok"><i style="background:var(--cyan-0)"></i><span>cyan-0</span></div>
+            <div class="tok"><i style="background:var(--cyan-1)"></i><span>cyan-1</span></div>
+            <div class="tok"><i style="background:var(--cyan-2)"></i><span>cyan-2</span></div>
+            <div class="tok"><i style="background:var(--cyan-3)"></i><span>cyan-3</span></div>
+            <div class="tok"><i style="background:var(--cyan-4)"></i><span>cyan-4</span></div>
+            <div class="tok"><i style="background:var(--cyan-5)"></i><span>cyan-5</span></div>
+            <div class="tok"><i style="background:var(--cyan-6);border-color:var(--cyan-6);outline:2px solid var(--ink-4)"></i><span>#25F4EE</span></div>
+            <div style="width:18px"></div>
+            <div class="tok"><i style="background:var(--g0)"></i><span>g0 底</span></div>
+            <div class="tok"><i style="background:var(--g2)"></i><span>g2 面</span></div>
+            <div class="tok"><i style="background:var(--g4)"></i><span>g4 浮</span></div>
+            <div class="tok"><i style="background:#E8E8EC"></i><span>图标默认</span></div>
+          </div>
+          <div style="margin-top:10px;font-size:11.5px;color:var(--ink-3);line-height:1.7">
+            使用规则:品牌红仅用于 <b>激活态 / 主 CTA / 品牌触点</b>,禁止表达错误或危险(危险语义 = --danger #FF6B6E);青色 = 图表主系列 / 链接 / 数据强调;中性 g0-g5 为背景与浮层层级;图标默认 #E8E8EC(媒电通 VI),激活转品牌红。
+          </div>
+        </div>
+      </section>
+
+      <!-- 占位 -->
+      <section class="view" id="v-ph">
+        <div class="ph">
+          <div><div class="big"><svg class="ic" viewBox="0 0 24 24"><path d="M3 12h5l2-7 4 14 2-7h5"/></svg></div>
+          <h2 id="ph-title">模块页面开发中</h2>
+          <p id="ph-desc"></p></div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<!-- 客户 360 抽屉 -->
+<div class="drawer-mask" id="dmask" onclick="closeDrawer()"></div>
+<aside class="drawer" id="drawer">
+  <div class="drawer-head">
+    <div class="detail-avatar">盛</div>
+    <div>
+      <div class="detail-title">盛达集团</div>
+      <div class="detail-sub"><span class="chip brand">A 级</span><span class="chip gray">美妆日化 · 华东</span><span class="chip green">续约倾向 高</span></div>
+    </div>
+    <button class="icon-btn" style="margin-left:auto" onclick="closeDrawer()"><svg class="ic" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <div class="dtabs">
+    <div class="dtab active">概览</div><div class="dtab">决策链</div><div class="dtab">时间线</div><div class="dtab">合同与回款</div>
+  </div>
+  <div class="drawer-body">
+    <div class="kv-grid">
+      <div class="score-ring-wrap">
+        <svg width="52" height="52" class="ring"><circle class="bg" cx="26" cy="26" r="21"/><circle class="fg" cx="26" cy="26" r="21" stroke-dasharray="132" stroke-dashoffset="18.5"/></svg>
+        <div><div class="score-lbl">客户健康度 · 良好</div><div class="score-num">86<span style="font-size:12px;color:var(--ink-4);font-weight:500"> / 100</span></div></div>
+        <div style="margin-left:auto;display:grid;gap:4px 14px;font-size:11.5px;grid-template-columns:auto auto"><span class="muted">合作频次</span><b>高</b><span class="muted">回款</span><b>良好</b><span class="muted">响应</span><b>活跃</b></div>
+      </div>
+      <div class="kv"><span class="k">RFM 分层</span><span class="v">重要价值客户</span></div>
+      <div class="kv"><span class="k">累计合作</span><span class="v">¥186 万</span></div>
+      <div class="kv"><span class="k">进行中商机</span><span class="v">¥38 万(报价)</span></div>
+      <div class="kv"><span class="k">生命周期</span><span class="v">第 3 年 · 稳定期</span></div>
+      <div class="kv"><span class="k">NPS</span><span class="v" style="color:var(--success)">+48</span></div>
+      <div class="kv"><span class="k">开票资料</span><span class="v" style="font-weight:500;font-size:12px">已建档 · 专票</span></div>
+    </div>
+    <div style="padding:0 18px 6px;font-size:10.5px;color:var(--ink-4);font-weight:650;letter-spacing:.06em">决策链(角色徽章)</div>
+    <div class="chain">
+      <div class="chain-row"><div class="chain-avatar">张</div><div><div style="font-size:12.8px;font-weight:600">张伟 · 市场总监</div><div style="font-size:11px;color:var(--ink-4)">最近触达 8/16 · 已沉默 23 天</div></div><span class="chip danger chain-role">DM 决策人</span></div>
+      <div class="chain-row"><div class="chain-avatar">孙</div><div><div style="font-size:12.8px;font-weight:600">孙丽 · 媒介经理</div><div style="font-size:11px;color:var(--ink-4)">支持者 · OCR 名片建档 7/12</div></div><span class="chip data chain-role">影响者</span></div>
+      <div class="chain-row"><div class="chain-avatar">刘</div><div><div style="font-size:12.8px;font-weight:600">刘总 · 分管副总</div><div style="font-size:11px;color:var(--ink-4)">最终审批 · 未触达</div></div><span class="chip gray chain-role">审批人</span></div>
+    </div>
+    <div style="padding:8px 18px 0;font-size:10.5px;color:var(--ink-4);font-weight:650;letter-spacing:.06em">接触点时间线(近 4 条)</div>
+    <div style="padding-top:10px">
+      <div class="tl-item"><span class="tl-dot" style="background:var(--brand)"></span><div><div class="tl-title">拜访沟通 Q4 投放框架</div><div class="tl-sub">对电梯媒体兴趣高,待补资源报价。</div><div class="tl-time">2026-09-06 · 线下拜访</div></div></div>
+      <div class="tl-item"><span class="tl-dot" style="background:var(--data)"></span><div><div class="tl-title">发送报价单 V3(客户版脱敏)</div><div class="tl-sub">不含媒体成本与毛利 · 刊例版本 2026-Q3</div><div class="tl-time">2026-08-16 · 邮件</div></div></div>
+      <div class="tl-item"><span class="tl-dot" style="background:var(--success)"></span><div><div class="tl-title">微信确认预算区间</div><div class="tl-sub">全年 400-500 万,双11 可投 120 万</div><div class="tl-time">2026-08-12 · 微信导入</div></div></div>
+      <div class="tl-item"><span class="tl-dot"></span><div><div class="tl-title">电话跟进方案反馈</div><div class="tl-sub">对种草部分有疑虑,需补 KOL 案例</div><div class="tl-time">2026-07-30 · 电话 12min</div></div></div>
+    </div>
+  </div>
+  <div class="drawer-foot">
+    <button class="btn btn-primary" style="flex:1;justify-content:center"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>记录跟进</button>
+    <button class="btn btn-ghost" style="flex:1;justify-content:center">新建任务</button>
+  </div>
+</aside>
+
+<!-- 快速采集 -->
+<div class="quick-mask" id="quick">
+  <div class="quick-panel">
+    <div class="quick-input">
+      <svg class="ic" viewBox="0 0 24 24" style="color:var(--ink-4)"><path d="M12 5v14M5 12h14"/></svg>
+      <input placeholder="随手记一条…(客户 / 跟进 / 想法 / 费用)" />
+      <span class="chip gray">Ctrl K</span>
+    </div>
+    <div class="quick-types">
+      <span class="qtype sel">记跟进</span><span class="qtype">记客户</span><span class="qtype">记想法</span><span class="qtype">记费用</span><span class="qtype">名片 OCR</span><span class="qtype">微信粘贴导入</span><span class="qtype">网页剪藏</span>
+    </div>
+    <div class="quick-foot"><span>收进 · 今日驾驶舱 待归类区,不打断当前工作</span><button class="btn btn-primary" onclick="closeQuick()">保存(演示)</button></div>
+  </div>
+</div>
+
+<div style="position:fixed;bottom:8px;right:14px;font-size:11px;color:var(--ink-4)">V2 · 深色默认 · 抖音品牌色 + 媒电通图标 · 演示数据</div>
+
+<script>
+  var titles={today:'今日驾驶舱',crm:'CRM 客户管理',media:'媒介策略中心',data:'数据分析报表',kb:'知识学习系统',todo:'工作管理系统',dev:'客户开发系统',growth:'个人成长规划',sys:'系统管理'};
+  var phInfo={kb:{t:'知识学习系统',d:'PARA 四层 + 双链笔记 + 知识图谱 + 70-20-10 学习路径。'},todo:{t:'工作管理系统',d:'GTD → OKR + Kanban + WBS + 四象限。'},dev:{t:'客户开发系统',d:'MEDDIC/BANT 商机评估 + SPIN 话术 + Pipeline 加权预测。'},growth:{t:'个人成长规划',d:'IDP 闭环 + AAR 复盘 + 能力自评 + 人脉与财务健康。'},sys:{t:'系统管理',d:'配置 / 日志审计 / 备份恢复 / 数据导出与迁移。'}};
+  function goView(v){
+    var real=titles[v]&&document.getElementById('v-'+v)?v:'ph';
+    document.querySelectorAll('.view').forEach(function(s){s.classList.remove('active');});
+    document.getElementById('v-'+real).classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(function(n){n.classList.toggle('active',n.dataset.v===v);});
+    if(real==='ph'){
+      var info=phInfo[v]||{};
+      document.getElementById('ph-title').textContent=info.t||'模块页面开发中';
+      document.getElementById('ph-desc').textContent=(info.d||'')+' 完整页面将在下一轮迭代补充。';
+      document.getElementById('crumb-cur').textContent=info.t||'模块页面开发中';
+    } else { document.getElementById('crumb-cur').textContent=titles[v]; }
+    document.querySelector('.content').scrollTop=0;
+  }
+  document.querySelectorAll('.nav-item').forEach(function(n){n.addEventListener('click',function(){ if(n.id==='nav-quick'){openQuick();return;} goView(n.dataset.v); });});
+
+  /* 抽屉 */
+  function openDrawer(){document.getElementById('drawer').classList.add('open');document.getElementById('dmask').classList.add('open');}
+  function closeDrawer(){document.getElementById('drawer').classList.remove('open');document.getElementById('dmask').classList.remove('open');}
+
+  /* 快速采集 */
+  function openQuick(){document.getElementById('quick').classList.add('open');document.querySelector('#quick input').focus();}
+  function closeQuick(){document.getElementById('quick').classList.remove('open');}
+  document.getElementById('quick').addEventListener('click',function(e){if(e.target.id==='quick')closeQuick();});
+  document.querySelectorAll('.qtype').forEach(function(t){t.addEventListener('click',function(){document.querySelectorAll('.qtype').forEach(function(x){x.classList.remove('sel');});t.classList.add('sel');});});
+
+  /* 主题 */
+  var dark=true;
+  document.getElementById('theme-btn').addEventListener('click',function(){
+    dark=!dark;
+    document.documentElement.setAttribute('data-theme',dark?'dark':'light');
+    document.getElementById('theme-ic').innerHTML= dark
+      ?'<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4m11.4-11.4 1.4-1.4"/>'
+      :'<path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11z"/>';
+  });
+
+  /* 专注模式 */
+  document.getElementById('focus-btn').addEventListener('click',function(){
+    document.documentElement.classList.toggle('focus-mode');
+  });
+
+  /* Ctrl K */
+  document.getElementById('cmd-trigger').addEventListener('click',openQuick);
+  document.addEventListener('keydown',function(e){
+    if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openQuick();}
+    if(e.key==='Escape'){closeDrawer();closeQuick();}
+  });
+</script>
+</body>
+</html>
