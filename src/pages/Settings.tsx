@@ -6,11 +6,11 @@ import { getDnd, type Dnd } from "../core/notify";
 import { Btn, Chip, Field, useToast } from "../ui/common";
 import { IconRefresh } from "../components/icons";
 
-type Tab = "设置" | "回收站" | "操作日志" | "标签治理";
+type Tab = "设置" | "回收站" | "操作日志" | "标签治理" | "自定义字段";
 
 interface LogRow { id: string; ts: number; who: string; what: string; entityType: string; entityId: string; before: unknown | null }
 
-export default function SettingsPage(props: { theme: "dark" | "light"; setTheme: (t: "dark" | "light") => void; reload: () => Promise<void>; customers: { id: string; name: string }[]; notes: { id: string; title: string; tags: string[]; content: string }[] }) {
+export default function SettingsPage(props: { theme: "dark" | "light"; setTheme: (t: "dark" | "light") => void; reload: () => Promise<void>; customers: { id: string; name: string }[]; notes: { id: string; title: string; tags: string[]; content: string }[]; customFields: { id: string; entity: string; key: string; label: string; type: string; options?: string[] }[] }) {
   const { show, node } = useToast();
   const [tab, setTab] = useState<Tab>("设置");
   const [trash, setTrash] = useState<{ store: string; id: string; title: string; deletedAt: number }[]>([]);
@@ -229,6 +229,7 @@ export default function SettingsPage(props: { theme: "dark" | "light"; setTheme:
         </div>
       )}
       {tab === "标签治理" && <TagGovernance notes={props.notes} reload={props.reload} />}
+      {tab === "自定义字段" && <CustomFieldsGov defs={props.customFields} reload={props.reload} />}
 
       {node}
     </div>
@@ -300,6 +301,110 @@ function CustomerPack(props: { customers: { id: string; name: string }[]; onDone
         {props.customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
       </select>
       <Btn kind="ghost" onClick={pack}>导出索引</Btn>
+    </div>
+  );
+}
+
+
+/** 自定义字段管理:定义客户/商机扩展字段 */
+function CustomFieldsGov(props: { defs: { id: string; entity: string; key: string; label: string; type: string; options?: string[] }[]; reload: () => Promise<void> }) {
+  const { show, node } = useToast();
+  const [entity, setEntity] = useState("customers");
+  const [key, setKey] = useState("");
+  const [label, setLabel] = useState("");
+  const [type, setType] = useState("text");
+  const [options, setOptions] = useState("");
+
+  async function add() {
+    if (!key.trim() || !label.trim()) { show("字段标识与名称必填"); return; }
+    if (props.defs.some((d) => d.entity === entity && d.key === key.trim())) { show("该实体下已存在同标识字段"); return; }
+    const next = [...props.defs, { id: "cf-" + Date.now().toString(36), entity, key: key.trim(), label: label.trim(), type, options: type === "select" ? options.split(/[,，]/).map((s) => s.trim()).filter(Boolean) : undefined }];
+    await db.setSetting("customFields", next);
+    setKey(""); setLabel(""); setOptions("");
+    show("自定义字段已添加");
+    await props.reload();
+  }
+
+  async function del(id: string) {
+    const next = props.defs.filter((d) => d.id !== id);
+    await db.setSetting("customFields", next);
+    show("已删除字段定义(已有数据保留)");
+    await props.reload();
+  }
+
+  return (
+    <div className="card card-pad" style={{ maxWidth: 680 }}>
+      <div className="h-row" style={{ marginBottom: 8 }}>
+        <span className="h-title sm">自定义字段(客户 / 商机)</span>
+        <Chip gray style={{ marginLeft: "auto" }}>新增表单与 360° 视图自动渲染</Chip>
+      </div>
+      <div className="field-row">
+        <Field label="实体">
+          <select className="sel" style={{ width: "100%" }} value={entity} onChange={(e) => setEntity(e.target.value)}>
+            <option value="customers">客户</option>
+            <option value="deals">商机</option>
+          </select>
+        </Field>
+        <Field label="字段标识(英文)"><input className="inp" style={{ width: "100%" }} value={key} onChange={(e) => setKey(e.target.value)} placeholder="如:channel" /></Field>
+      </div>
+      <div className="field-row">
+        <Field label="显示名称"><input className="inp" style={{ width: "100%" }} value={label} onChange={(e) => setLabel(e.target.value)} placeholder="如:获客渠道" /></Field>
+        <Field label="类型">
+          <select className="sel" style={{ width: "100%" }} value={type} onChange={(e) => setType(e.target.value)}>
+            {["text", "number", "date", "select"].map((x) => <option key={x}>{x}</option>)}
+          </select>
+        </Field>
+      </div>
+      {type === "select" ? <Field label="选项(逗号分隔)"><input className="inp" style={{ width: "100%" }} value={options} onChange={(e) => setOptions(e.target.value)} /></Field> : null}
+      <Btn kind="primary" onClick={() => { void add(); }}>添加字段</Btn>
+
+'      <div className="h-row" style={{ marginTop: 20 }}><span className="h-title sm">自定义商机阶段</span><Chip gray style={{ marginLeft: "auto" }}>插入到默认阶段后,不可删除系统阶段</Chip></div>
+      <CustomStages />
+
+      <div className="h-row" style={{ marginTop: 14 }}><span className="h-title sm">已定义({props.defs.length})</span></div>'
+      {props.defs.map((d) => (
+        <div className="alert-line" key={d.id}>
+          <span className="txt"><b>{d.label}</b> <code>{d.key}</code> · {d.entity === "customers" ? "客户" : "商机"} · {d.type}{d.options ? "(" + d.options.join("/") + ")" : ""}</span>
+          <Btn kind="danger" sm onClick={() => { void del(d.id); }}>删除</Btn>
+        </div>
+      ))}
+      {props.defs.length === 0 ? <p className="muted">暂无自定义字段</p> : null}
+      {node}
+    </div>
+  );
+}
+
+function CustomStages() {
+  const { show, node } = useToast();
+  const [name, setName] = useState("");
+  const [stages, setStages] = useState<string[]>([]);
+  useEffect(() => { void (async () => setStages(await db.getSetting<string[]>("customStages", [])))(); }, []);
+  async function add() {
+    if (!name.trim()) { show("阶段名必填"); return; }
+    const next = Array.from(new Set([...stages, name.trim()]));
+    setStages(next); await db.setSetting("customStages", next);
+    setName(""); show("自定义阶段已添加,客户开发页可选");
+  }
+  async function del(s: string) {
+    const next = stages.filter((x) => x !== s);
+    setStages(next); await db.setSetting("customStages", next);
+  }
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <input className="inp" style={{ width: 200 }} value={name} onChange={(e) => setName(e.target.value)} placeholder="阶段名,如:联合利华专项" />
+        <Btn kind="primary" sm onClick={() => { void add(); }}>添加</Btn>
+      </div>
+      <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+        {stages.map((s) => (
+          <span key={s} style={{ display: "inline-flex", gap: 4, alignItems: "center" }}>
+            <Chip kind="data">{s}</Chip>
+            <button className="btn done sm" onClick={() => { void del(s); }}>×</button>
+          </span>
+        ))}
+        {stages.length === 0 ? <span className="muted" style={{ fontSize: "var(--text-xs)" }}>暂无自定义阶段</span> : null}
+      </div>
+      {node}
     </div>
   );
 }

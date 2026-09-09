@@ -4,6 +4,8 @@ import { daysSince, healthOf } from "../core/derive";
 import type { Customer, Deal, Milestone, Objective, Payment, ContactPoint, Task } from "../types";
 import { Btn, Chip, money, Progress, useToast } from "../ui/common";
 import { genScript } from "../core/ai/script";
+import { uid } from "../ui/common";
+import { db } from "../db/db";
 import { IconWallet } from "../components/icons";
 
 interface Props {
@@ -155,7 +157,15 @@ export default function Today(props: Props) {
             <div className="alert-line" key={c.id}>
               <span className="dot-flag" style={{ background: "var(--danger)" }} />
               <span className="txt">健康度偏低:<b>{c.name}</b>(<span className="num">{healthOf(c.id, props.cps, props.payments)}</span> 分)</span>
+'              <span style={{ display: "inline-flex", gap: 6 }}>
               <button className="btn done sm" onClick={() => props.goCrm(c.id)}>查看</button>
+              <button className="btn done sm" onClick={() => { void (async () => {
+                const list = await db.getSetting<{ id: string; at: number; title: string; body: string }[]>("snoozed", []);
+                list.push({ id: uid("sn"), at: Date.now() + 3600000, title: "健康度预警 · " + c.name, body: "1 小时前设置的稍后提醒:该客户健康度偏低,建议跟进。" });
+                await db.setSetting("snoozed", list);
+                show("已设 1 小时后提醒");
+              })(); }}>稍后提醒</button>
+              </span>'
             </div>
           ))}
           {lowHealth.length === 0 ? <p className="muted">暂无预警</p> : null}

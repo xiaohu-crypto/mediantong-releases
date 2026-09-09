@@ -1,4 +1,4 @@
-﻿/** 校验引擎:纯函数,规则来自需求文档 2.4 */
+/** 校验引擎:纯函数,规则来自需求文档 2.4 */
 
 export const DEAL_STAGES = ["线索", "MQL", "SQL", "商机", "报价", "谈判", "签约", "输单", "流失"] as const;
 export const GRADES = ["S", "A", "B", "C"] as const;

@@ -12,6 +12,7 @@ export default function Kb(props: Props) {
   const [selId, setSelId] = useState<string | null>(props.focusId ?? props.notes[0]?.id ?? null);
   const [draft, setDraft] = useState<{ title: string; content: string; tags: string; para: Note["para"] } | null>(null);
 
+  const [mode, setMode] = useState<"list" | "graph">("list");
   const notes = props.notes.filter((n) => !n.deletedAt);
   const sel = notes.find((n) => n.id === selId) ?? null;
 
@@ -64,10 +65,47 @@ export default function Kb(props: Props) {
     <div>
       <div className="page-head">
         <div><h1>知识学习系统</h1><div className="date">PARA 归档 · 双链 [[]] · 版本历史 · 标签检索</div></div>
-        <div className="actions"><Btn kind="primary" onClick={openNew}><IconPlus size={14} /> 新建笔记</Btn></div>
+'        <div className="actions">
+          <Btn kind={mode === "graph" ? "data" : "ghost"} onClick={() => setMode(mode === "graph" ? "list" : "graph")}>{mode === "graph" ? "列表视图" : "知识图谱"}</Btn>
+          <Btn kind="primary" onClick={openNew}><IconPlus size={14} /> 新建笔记</Btn>
+        </div>'
       </div>
 
-      <div className="grid-c" style={{ gridTemplateColumns: "300px minmax(0,1fr)" }}>
+      {mode === "graph" ? (
+        <div className="card" style={{ padding: "16px 18px", marginBottom: 16 }}>
+          <div className="h-row"><span className="h-title sm">知识图谱</span><span className="chip data" style={{ marginLeft: "auto" }}>节点 = 笔记 · 连线 = [[双链]] · 点击打开</span></div>
+          <svg viewBox="0 0 800 400" style={{ width: "100%", height: 360 }}>
+            {(() => {
+              const list = notes;
+              const cx = 400, cy = 200, r = 150;
+              const pos = list.map((n, i) => {
+                const ang = (i / Math.max(list.length, 1)) * Math.PI * 2 - Math.PI / 2;
+                return { id: n.id, title: n.title, x: cx + r * Math.cos(ang), y: cy + r * 0.85 * Math.sin(ang) };
+              });
+              const byTitle = new Map(list.map((n) => [n.title, n.id]));
+              const edges: { a: number; b: number }[] = [];
+              for (const n of list) {
+                const re = /\[\[([^\]]+)\]\]/g; let m;
+                while ((m = re.exec(n.content))) {
+                  const tid = byTitle.get(m[1]);
+                  if (tid && tid !== n.id) edges.push({ a: pos.findIndex((p) => p.id === n.id), b: pos.findIndex((p) => p.id === tid) });
+                }
+              }
+              return (
+                <>
+                  {edges.map((e, i) => <line key={i} x1={pos[e.a].x} y1={pos[e.a].y} x2={pos[e.b].x} y2={pos[e.b].y} stroke="var(--border)" strokeWidth="1.2" />)}
+                  {pos.map((p) => (
+                    <g key={p.id} style={{ cursor: "pointer" }} onClick={() => { setSelId(p.id); setMode("list"); }}>
+                      <circle cx={p.x} cy={p.y} r="7" fill="var(--data)" />
+                      <text x={p.x} y={p.y - 12} textAnchor="middle" style={{ fontSize: 11, fill: "var(--ink-2)" }}>{p.title.slice(0, 8)}</text>
+                    </g>
+                  ))}
+                </>
+              );
+            })()}
+          </svg>
+        </div>
+      ) : null}      <div className="grid-c" style={{ gridTemplateColumns: "300px minmax(0,1fr)" }}>
         <div className="card" style={{ overflow: "hidden" }}>
           <div className="toolbar-row" style={{ padding: "12px 12px 4px", marginBottom: 0 }}>
             <div className="filter-input" style={{ maxWidth: "none" }}>

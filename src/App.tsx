@@ -13,7 +13,7 @@ import Kb from "./pages/Kb";
 import Data from "./pages/Data";
 import Growth from "./pages/Growth";
 import Help from "./pages/Help";
-import { startupCatchUp } from "./core/notify";
+import { startupCatchUp, maybeNotify } from "./core/notify";
 import SettingsPage from "./pages/Settings";
 import QuickCapture from "./components/QuickCapture";
 import TopSearch from "./components/TopSearch";
@@ -46,6 +46,7 @@ interface DataSet {
   pitches: Pitch[]; suppliers: Supplier[]; resources: MediaResource[];
   ratecards: RateCard[]; items: ScheduleItem[]; postbuys: PostBuy[];
   notes: Note[]; baselines: Baseline[]; aars: Aar[];
+  customFields: { id: string; entity: string; key: string; label: string; type: string; options?: string[] }[];
 }
 
 type View = "today" | "crm" | "work" | "dev" | "media" | "kb" | "data" | "growth" | "settings" | "help";
@@ -86,6 +87,7 @@ async function loadAll(): Promise<DataSet> {
     notes: await alive<Note>("notes"),
     baselines: await alive<Baseline>("baselines"),
     aars: await alive<Aar>("aars"),
+    customFields: await db.getSetting("customFields", [] as { id: string; entity: string; key: string; label: string; type: string; options?: string[] }[]),
   };
 }
 
@@ -152,6 +154,18 @@ export default function App() {
     const id = window.setInterval(() => void tick(), 60000);
     return () => window.clearInterval(id);
   }, [data]);
+
+  /* snooze 到期检查:每 60s */
+  useEffect(() => {
+    const id = window.setInterval(() => void (async () => {
+      const list = await db.getSetting<{ id: string; at: number; title: string; body: string }[]>("snoozed", []);
+      const due = list.filter((x) => x.at <= Date.now());
+      if (due.length === 0) return;
+      for (const x of due) await maybeNotify(x.title, x.body);
+      await db.setSetting("snoozed", list.filter((x) => x.at > Date.now()));
+    })(), 60000);
+    return () => window.clearInterval(id);
+  }, []);
 
   function switchTheme(t: "dark" | "light") {
     setTheme(t);
@@ -222,7 +236,7 @@ export default function App() {
           {view === "crm" && data ? (
             <CRM customers={data.customers} contacts={data.contacts} rels={data.rels} deals={data.deals}
               contracts={data.contracts} payments={data.payments} cps={data.cps} tasks={data.tasks}
-              reload={reload} focusCustomerId={focusCid} />
+                            reload={reload} focusCustomerId={focusCid} customFields={data.customFields} />
           ) : null}
           {view === "work" && data ? (
             <Work tasks={data.tasks} objectives={data.objectives} customers={data.customers} reload={reload} />
@@ -246,7 +260,7 @@ export default function App() {
           {view === "help" ? <Help /> : null}
           {view === "settings" ? (
             <SettingsPage theme={theme} setTheme={switchTheme} reload={reload}
-              customers={data?.customers ?? []} notes={data?.notes ?? []} />
+              customers={data?.customers ?? []} notes={data?.notes ?? []} customFields={data?.customFields ?? []} />
           ) : null}
           {!data ? <p className="muted" style={{ padding: 24 }}>正在加载数据…</p> : null}
         </main>

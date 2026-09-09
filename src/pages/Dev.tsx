@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { db } from "../db/db";
 import { weightedValue } from "../core/metrics";
 import type { Customer, Deal, DealStage, Pitch } from "../types";
@@ -26,6 +26,8 @@ export default function Dev(props: Props) {
   const { show, node } = useToast();
   const [selected, setSelected] = useState<string | null>(null);
   const [pitchOpen, setPitchOpen] = useState(false);
+  const [extraStages, setExtraStages] = useState<string[]>([]);
+  useEffect(() => { void (async () => setExtraStages(await db.getSetting<string[]>("customStages", [])))(); }, []);
   const [pf, setPf] = useState({ name: "", customerId: "", date: new Date().toISOString().slice(0, 10), investment: "", competitors: "", result: "待定", lossReason: "", reviewNote: "" });
 
   const deals = props.deals.filter((d) => !d.deletedAt);
@@ -100,7 +102,7 @@ export default function Dev(props: Props) {
           <div className="h-row">
             <span className="h-title sm">{nameOf(sel.customerId)} · {sel.title}</span>
             <select className="sel" style={{ marginLeft: "auto" }} value={sel.stage} onChange={(e) => { void setStage(sel, e.target.value as DealStage); }}>
-              {STAGES.map((s) => <option key={s} value={s}>{s}({Math.round(PROB[s] * 100)}%)</option>)}
+              {[...STAGES, ...extraStages.filter((s) => !STAGES.includes(s as DealStage))].map((s) => <option key={s} value={s}>{s}{PROB[s as DealStage] !== undefined ? "(" + Math.round(PROB[s as DealStage] * 100) + "%)" : ""}</option>)}
             </select>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>

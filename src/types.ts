@@ -6,6 +6,7 @@ export type KanbanCol = "待办" | "进行中" | "待审核" | "完成";
 export interface Customer {
   id: string; name: string; industry: string; grade: Grade;
   parentId?: string | null; billingTitle?: string; billingTaxNo?: string;
+  custom?: Record<string, unknown>;
   deletedAt?: number;
 }
 export interface Contact {
@@ -17,6 +18,7 @@ export interface Rel { id: string; contactId: string; customerId: string; role: 
 export interface Deal {
   id: string; customerId: string; title: string; stage: DealStage;
   value: number; probability: number; lastTouchAt: number;
+  custom?: Record<string, unknown>;
   meddic?: string[]; bant?: string[];
   deletedAt?: number;
 }
