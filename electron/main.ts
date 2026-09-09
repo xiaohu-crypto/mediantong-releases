@@ -1,4 +1,6 @@
-import { app, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, nativeImage, safeStorage } from "electron";
+import { app, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, nativeImage, safeStorage, dialog } from "electron";
+import { mkdir, readdir, writeFile, unlink } from "node:fs/promises";
+import path2 from "node:path";
 import path from "node:path";
 
 let win: BrowserWindow | null = null;
@@ -86,6 +88,25 @@ app.whenReady().then(() => {
   });
 });
 
+
+// Backup: write payload to dir and rotate, keep newest N
+ipcMain.handle("backup:pickDir", async () => {
+  if (!win) return null;
+  const r = await dialog.showOpenDialog(win, { properties: ["openDirectory", "createDirectory"] });
+  return r.canceled ? null : r.filePaths[0];
+});
+ipcMain.handle("backup:write", async (_e, args: { dir: string; content: string; keep: number }) => {
+  try {
+    await mkdir(args.dir, { recursive: true });
+    const ts = new Date().toISOString().replace(/[:T]/g, "-").slice(0, 19);
+    const file = path2.join(args.dir, "backup-" + ts + ".json");
+    await writeFile(file, args.content, "utf-8");
+    const files = (await readdir(args.dir)).filter((f) => f.startsWith("backup-") && f.endsWith(".json")).sort().reverse();
+    let removed = 0;
+    for (const f of files.slice(Math.max(1, args.keep))) { await unlink(path2.join(args.dir, f)); removed++; }
+    return { ok: true, file, removed };
+  } catch (e) { return { ok: false, error: String(e) }; }
+});
 app.on("window-all-closed", () => {
   // 托盘常驻:不退出,仅隐藏窗口语义;真正退出走托盘菜单
 });

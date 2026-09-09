@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { db } from "../db/db";
 import { seedIfEmpty } from "../data/seed";
 import { DEFAULT_AI_CONFIG, getAiConfig, loadAiKey, saveAiKey, saveAiConfig, type AiConfig } from "../core/ai/client";
+import { getDnd, type Dnd } from "../core/notify";
 import { Btn, Chip, Field, useToast } from "../ui/common";
 import { IconRefresh } from "../components/icons";
 
@@ -21,6 +22,8 @@ export default function SettingsPage(props: { theme: "dark" | "light"; setTheme:
   const [aiTesting, setAiTesting] = useState(false);
   const [aiResult, setAiResult] = useState<string | null>(null);
   const [usage, setUsage] = useState<{ month: string; calls: number; tokens: number } | null>(null);
+  const [ab, setAb] = useState<{ enabled: boolean; intervalHours: number; dir: string; keep: number; lastAt: number }>({ enabled: false, intervalHours: 24, dir: "", keep: 7, lastAt: 0 });
+  const [dnd, setDnd] = useState<Dnd>({ enabled: false, start: "22:00", end: "08:00" });
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -33,6 +36,8 @@ export default function SettingsPage(props: { theme: "dark" | "light"; setTheme:
       const k = await loadAiKey();
       setKeyState({ has: !!k.key, encrypted: k.encrypted });
       setUsage(await db.getSetting("aiUsage", null));
+      setAb(await db.getSetting("autoBackup", { enabled: false, intervalHours: 24, dir: "", keep: 7, lastAt: 0 }));
+      setDnd(await getDnd());
     })();
   }, [tab]);
 
@@ -109,6 +114,35 @@ export default function SettingsPage(props: { theme: "dark" | "light"; setTheme:
               onChange={(e) => { const f = e.target.files?.[0]; if (f) void restoreFile(f); e.target.value = ""; }} />
             <Btn kind="danger" onClick={() => { void (async () => { await db.clearAll(); await seedIfEmpty(); await props.reload(); show("已重置并重建示例数据"); })(); }}>重置示例数据</Btn>
           </div>
+          <div className="h-row" style={{ marginTop: 20 }}><span className="h-title sm">自动备份轮转</span></div>
+          <div className="alert-line"><span className="txt">开启后按间隔自动写盘到所选目录,保留最近份数,错过时点启动补跑</span>
+            <Btn kind={ab.enabled ? "data" : "ghost"} sm onClick={() => { const v = { ...ab, enabled: !ab.enabled }; setAb(v); void db.setSetting("autoBackup", v); show(v.enabled ? "自动备份已开启" : "自动备份已关闭"); }}>{ab.enabled ? "已开启" : "已关闭"}</Btn>
+          </div>
+          <div className="alert-line"><span className="txt">备份目录</span>
+            <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
+              <span className="cell-sub num" style={{ maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ab.dir || "未设置"}</span>
+              {window.mta?.backupPickDir ? <Btn kind="ghost" sm onClick={() => { void (async () => { const d = await window.mta!.backupPickDir(); if (d) { const v = { ...ab, dir: d }; setAb(v); await db.setSetting("autoBackup", v); show("目录已设置"); } })(); }}>选择目录</Btn> : <Chip gray>需 Electron</Chip>}
+            </span>
+          </div>
+          <div className="alert-line"><span className="txt">间隔(小时) / 保留份数</span>
+            <span style={{ display: "inline-flex", gap: 8 }}>
+              <input className="inp num" style={{ width: 70, minHeight: 28 }} value={String(ab.intervalHours)} onChange={(e) => { const v = { ...ab, intervalHours: Number(e.target.value) || 24 }; setAb(v); void db.setSetting("autoBackup", v); }} />
+              <input className="inp num" style={{ width: 70, minHeight: 28 }} value={String(ab.keep)} onChange={(e) => { const v = { ...ab, keep: Number(e.target.value) || 7 }; setAb(v); void db.setSetting("autoBackup", v); }} />
+            </span>
+          </div>
+
+          <div className="h-row" style={{ marginTop: 20 }}><span className="h-title sm">通知与免打扰</span></div>
+          <div className="alert-line"><span className="txt">免打扰时段(期间不弹桌面通知,只进通知中心)</span>
+            <Btn kind={dnd.enabled ? "data" : "ghost"} sm onClick={() => { const v = { ...dnd, enabled: !dnd.enabled }; setDnd(v); void db.setSetting("dnd", v); }}>{dnd.enabled ? "已开启" : "已关闭"}</Btn>
+          </div>
+          <div className="alert-line"><span className="txt">时段(起 / 止,支持跨午夜)</span>
+            <span style={{ display: "inline-flex", gap: 8 }}>
+              <input className="inp num" type="time" style={{ width: 110, minHeight: 28 }} value={dnd.start} onChange={(e) => { const v = { ...dnd, start: e.target.value }; setDnd(v); void db.setSetting("dnd", v); }} />
+              <input className="inp num" type="time" style={{ width: 110, minHeight: 28 }} value={dnd.end} onChange={(e) => { const v = { ...dnd, end: e.target.value }; setDnd(v); void db.setSetting("dnd", v); }} />
+            </span>
+          </div>
+          <div className="alert-line"><span className="txt">错过补发</span><Chip kind="green">已启用(启动时检查,超 8 小时自动补一条汇总)</Chip></div>
+
           <div className="h-row" style={{ marginTop: 20 }}><span className="h-title sm">AI 模型(Agnes AI · 云)</span></div>
           <div className="alert-line"><span className="txt">云模型总开关</span>
             <Btn kind={aiCfg.cloudEnabled ? "data" : "ghost"} sm onClick={() => { const v = !aiCfg.cloudEnabled; setAiCfg({ ...aiCfg, cloudEnabled: v }); void saveAiConfig({ ...aiCfg, cloudEnabled: v }); show(v ? "云模型已开启" : "云模型已关闭(全部走本地)"); }}>{aiCfg.cloudEnabled ? "已开启" : "已关闭"}</Btn>

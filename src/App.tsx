@@ -12,6 +12,8 @@ import Media from "./pages/Media";
 import Kb from "./pages/Kb";
 import Data from "./pages/Data";
 import Growth from "./pages/Growth";
+import Help from "./pages/Help";
+import { startupCatchUp } from "./core/notify";
 import SettingsPage from "./pages/Settings";
 import QuickCapture from "./components/QuickCapture";
 import TopSearch from "./components/TopSearch";
@@ -31,6 +33,8 @@ declare global {
       aiLoadKey: (rec: { enc?: string; plain?: string }) => Promise<string>;
       aiChat: (args: { baseUrl: string; apiKey: string; model: string; messages: { role: string; content: string }[] }) =>
         Promise<{ ok: boolean; content?: string; error?: string; status?: number; usage?: { total_tokens?: number } }>;
+      backupPickDir: () => Promise<string | null>;
+      backupWrite: (args: { dir: string; content: string; keep: number }) => Promise<{ ok: boolean; file?: string; removed?: number; error?: string }>;
     };
   }
 }
@@ -44,7 +48,7 @@ interface DataSet {
   notes: Note[]; baselines: Baseline[]; aars: Aar[];
 }
 
-type View = "today" | "crm" | "work" | "dev" | "media" | "kb" | "data" | "growth" | "settings";
+type View = "today" | "crm" | "work" | "dev" | "media" | "kb" | "data" | "growth" | "settings" | "help";
 
 const NAV: { key: View; label: string; icon: (p: { size?: number }) => JSX.Element; group: string }[] = [
   { key: "today", label: "今日驾驶舱", icon: IconHome, group: "工作区" },
@@ -55,6 +59,7 @@ const NAV: { key: View; label: string; icon: (p: { size?: number }) => JSX.Eleme
   { key: "kb", label: "知识学习系统", icon: IconKb, group: "八大模块" },
   { key: "data", label: "数据分析报表", icon: IconChart, group: "八大模块" },
   { key: "growth", label: "个人成长规划", icon: IconGrowth, group: "八大模块" },
+  { key: "help", label: "使用手册", icon: IconKb, group: "系统" },
   { key: "settings", label: "系统管理", icon: IconSettings, group: "系统" },
 ];
 
@@ -102,6 +107,9 @@ export default function App() {
       if (!onboarded && cs.length === 0) { setShowOnboard(true); }
       else { await seedIfEmpty(); await seedExtraIfEmpty(); }
       await reload();
+      // 启动错过补发:逾期回款汇总通知(免打扰时段内不弹)
+      const pays = (await db.getAll<Payment>("payments")).filter((p) => !p.deletedAt && p.status === "逾期");
+      void startupCatchUp(pays.length);
       const t = await db.getSetting<"dark" | "light">("theme", "dark");
       setTheme(t);
       document.documentElement.setAttribute("data-theme", t);
@@ -125,6 +133,24 @@ export default function App() {
       ...data.notes.map((n) => ({ id: n.id, type: "笔记", title: n.title, sub: n.tags.map((x) => "#" + x).join(" ") })),
     ];
     rebuildIndex(docs);
+  }, [data]);
+
+  /* 自动备份轮转:每 60s 检查一次,到期自动写盘并保留最近 N 份;错过补跑 */
+  useEffect(() => {
+    if (!data) return;
+    const tick = async () => {
+      const cfg = await db.getSetting("autoBackup", { enabled: false, intervalHours: 24, dir: "", keep: 7, lastAt: 0 });
+      if (!cfg.enabled || !cfg.dir) return;
+      if (Date.now() - cfg.lastAt < cfg.intervalHours * 3600000) return;
+      const dump = await db.dumpAll();
+      const payload = JSON.stringify({ app: "meidiantong-workbench", schemaVersion: 2, exportedAt: new Date().toISOString(), stores: dump });
+      if (!window.mta?.backupWrite) return;
+      const r = await window.mta.backupWrite({ dir: cfg.dir, content: payload, keep: cfg.keep });
+      if (r.ok) await db.setSetting("autoBackup", { ...cfg, lastAt: Date.now() });
+    };
+    void tick();
+    const id = window.setInterval(() => void tick(), 60000);
+    return () => window.clearInterval(id);
   }, [data]);
 
   function switchTheme(t: "dark" | "light") {
@@ -217,6 +243,7 @@ export default function App() {
           {view === "growth" && data ? (
             <Growth tasks={data.tasks} payments={data.payments} pitches={data.pitches} reload={reload} />
           ) : null}
+          {view === "help" ? <Help /> : null}
           {view === "settings" ? (
             <SettingsPage theme={theme} setTheme={switchTheme} reload={reload}
               customers={data?.customers ?? []} notes={data?.notes ?? []} />
