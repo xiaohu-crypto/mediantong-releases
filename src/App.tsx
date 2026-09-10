@@ -4,17 +4,19 @@ import { seedIfEmpty } from "./data/seed";
 import { seedExtraIfEmpty } from "./data/seed2";
 import { rebuildIndex, type SearchDoc } from "./core/search";
 import type { Aar, Baseline, Contact, ContactPoint, Contract, Customer, Deal, Influencer, Milestone, MediaResource, Note, Objective, Payment, Pitch, PostBuy, RateCard, Rel, ScheduleItem, Supplier, Task } from "./types";
-import Today from "./pages/Today";
-import CRM from "./pages/CRM";
-import Work from "./pages/Work";
-import Dev from "./pages/Dev";
-import Media from "./pages/Media";
-import Kb from "./pages/Kb";
-import Data from "./pages/Data";
-import Growth from "./pages/Growth";
-import Help from "./pages/Help";
+import { lazy, Suspense } from "react";
+const Today = lazy(() => import("./pages/Today"));
+const CRM = lazy(() => import("./pages/CRM"));
+const Work = lazy(() => import("./pages/Work"));
+const Dev = lazy(() => import("./pages/Dev"));
+const Media = lazy(() => import("./pages/Media"));
+const Kb = lazy(() => import("./pages/Kb"));
+const Data = lazy(() => import("./pages/Data"));
+const Growth = lazy(() => import("./pages/Growth"));
+const Help = lazy(() => import("./pages/Help"));
 import { startupCatchUp, maybeNotify } from "./core/notify";
-import SettingsPage from "./pages/Settings";
+const SettingsPage = lazy(() => import("./pages/Settings"));
+const Notifications = lazy(() => import("./pages/Notifications"));
 import QuickCapture from "./components/QuickCapture";
 import TopSearch from "./components/TopSearch";
 import Onboarding from "./components/Onboarding";
@@ -22,7 +24,6 @@ import {
   IconHome, IconPlus, IconUsers, IconTask, IconKb, IconFunnel, IconToday, IconFlag,
   IconMedia, IconChart, IconGrowth, IconSettings, IconMoon, IconSun,
 } from "./components/icons";
-import Notifications from "./pages/Notifications";
 
 declare global {
   interface Window {
@@ -266,7 +267,16 @@ export default function App() {
         </header>
 
         <main className="content">
-          {view === "today" && data ? (
+          <Suspense fallback={
+        <div style={{ padding: 24 }}>
+          <div style={{ height: 32, width: 200, background: "var(--surface-2)", borderRadius: 6, marginBottom: 16, animation: "pulse 1.2s infinite" }} />
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, marginBottom: 16 }}>
+            {[0,1,2,3].map((i) => <div key={i} style={{ height: 80, background: "var(--surface-2)", borderRadius: 8, animation: "pulse 1.2s infinite" }} />)}
+          </div>
+          <div style={{ height: 200, background: "var(--surface-2)", borderRadius: 8, animation: "pulse 1.2s infinite" }} />
+        </div>
+      }>
+      {view === "today" && data ? (
             <Today customers={data.customers} deals={data.deals} payments={data.payments} cps={data.cps}
               objectives={data.objectives} tasks={data.tasks} milestones={data.milestones}
               reload={reload} openQuick={() => setShowQuick(true)} goCrm={goCrm} />
@@ -298,7 +308,8 @@ export default function App() {
           {view === "notifications" && data ? (
             <Notifications customers={data.customers} payments={data.payments} cps={data.cps} goCrm={goCrm} reload={reload} />
           ) : null}
-          {view === "help" ? <Help /> : null}
+          </Suspense>
+      {view === "help" ? <Help /> : null}
           {view === "settings" ? (
             <SettingsPage theme={theme} setTheme={switchTheme} reload={reload}
               customers={data?.customers ?? []} notes={data?.notes ?? []} customFields={data?.customFields ?? []} />

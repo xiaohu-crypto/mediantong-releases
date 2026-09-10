@@ -52,12 +52,23 @@ export function Progress(props: { label: string; v: number; warn?: boolean }) {
   );
 }
 
-export function useToast(): { show: (m: string) => void; node: ReactNode } {
+export function useToast(): { show: (m: string, onUndo?: () => void) => void; node: ReactNode } {
   const [toast, setToast] = useState<string | null>(null);
-  const show = useCallback((m: string) => {
+  const [undoFn, setUndoFn] = useState<(() => void) | null>(null);
+  const show = useCallback((m: string, onUndo?: () => void) => {
     setToast(m);
-    window.setTimeout(() => setToast(null), 2600);
+    setUndoFn(() => onUndo ?? null);
+    window.setTimeout(() => { setToast(null); setUndoFn(null); }, 4000);
   }, []);
-  const node = toast ? <div className="toast">{toast}</div> : null;
+  const node = toast ? (
+    <div className="toast" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <span>{toast}</span>
+      {undoFn ? (
+        <button onClick={() => { undoFn(); setToast(null); setUndoFn(null); }} style={{ background: "transparent", color: "#fff", border: "1px solid rgba(255,255,255,.4)", borderRadius: 4, padding: "2px 10px", cursor: "pointer", fontSize: 12 }}>
+          撤销
+        </button>
+      ) : null}
+    </div>
+  ) : null;
   return { show, node };
 }

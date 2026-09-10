@@ -40,7 +40,11 @@ export default function Work(props: Props) {
     const t0 = tasks.find((x) => x.id === editId);
     if (!t0) return;
     await db.softDelete("tasks", editId, "删除任务「" + t0.title + "」");
-    show("任务已移入回收站");
+    const deleted = t0;
+    show("任务已删除", async () => {
+      await db.put("tasks", { ...deleted, deletedAt: undefined }, "撤销删除");
+      await props.reload();
+    });
     setEditId(null);
     await props.reload();
   }
