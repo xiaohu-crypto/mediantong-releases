@@ -74,7 +74,7 @@ export default function CRM(props: Props) {
       setTimeline(items.slice(0, 80));
     })();
   }, [openId]);
-  const [tab, setTab] = useState<"概览" | "决策链" | "时间线" | "合同与回款" | "媒介策略">("概览");
+  const [tab, setTab] = useState<"概览" | "决策链" | "时间线" | "合同与回款" | "媒介策略" | "AI建议">("概览");
   /* 客户级媒介策略(存于 customer.custom.mediaStrategy) */
   const [strategyEdit, setStrategyEdit] = useState(false);
   const [strategyDraft, setStrategyDraft] = useState({ audience: "", budget: "", mix: "", resources: "", note: "" });
@@ -90,6 +90,25 @@ export default function CRM(props: Props) {
     setStrategyEdit(false);
     show("客户媒介策略已保存");
     await props.reload();
+  }
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiAdvice, setAiAdvice] = useState("");
+  async function genAdvice() {
+    if (!drawerC) return;
+    setAiBusy(true); setAiAdvice("");
+    try {
+      const { aiChat } = await import("../core/ai/client");
+      const recentCps = props.cps.filter((cp) => cp.customerId === drawerC.id && !cp.deletedAt).slice(-5);
+      const custDeals = props.deals.filter((d) => d.customerId === drawerC.id && !d.deletedAt);
+      const ctx = "客户:" + drawerC.name + "\n行业:" + drawerC.industry + "\n等级:" + drawerC.grade +
+        "\n最近接触:" + recentCps.map((cp) => new Date(cp.time).toLocaleDateString() + " " + cp.channel + " " + cp.summary).join("; ") +
+        "\n在途商机:" + custDeals.map((d) => d.title + "(" + d.stage + ")").join("; ");
+      const r = await aiChat([
+        { role: "system", content: "你是资深媒体广告销售教练。基于客户信息给出3条具体可执行的跟进建议,每条不超过50字,用换行分隔。" },
+        { role: "user", content: ctx },
+      ]);
+      setAiAdvice(r.ok ? (r.content ?? "无回复") : "调用失败:" + (r.error ?? ""));
+    } finally { setAiBusy(false); }
   }
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -294,7 +313,7 @@ export default function CRM(props: Props) {
               <button className="icon-btn" style={{ marginLeft: "auto" }} onClick={() => setOpenId(null)} aria-label="关闭"><IconClose size={16} /></button>
             </div>
             <div className="dtabs">
-              {(["概览", "决策链", "时间线", "合同与回款", "媒介策略"] as const).map((t) => (
+              {(["概览", "决策链", "时间线", "合同与回款", "媒介策略", "AI建议"] as const).map((t) => (
                 <span key={t} className={"dtab" + (tab === t ? " active" : "")} onClick={() => setTab(t)}>{t}</span>
               ))}
             </div>
@@ -426,6 +445,14 @@ export default function CRM(props: Props) {
           <Field label="备注"><textarea className="inp" rows={2} style={{ width: "100%" }} value={strategyDraft.note} onChange={(e) => setStrategyDraft({ ...strategyDraft, note: e.target.value })} /></Field>
         </Modal>
       ) : null}
+              {tab === "AI建议" && drawerC ? (
+                <div style={{ padding: 8 }}>
+                  <Btn kind="primary" onClick={() => { void genAdvice(); }} disabled={aiBusy}>
+                    {aiBusy ? "思考中…" : "生成跟进建议"}
+                  </Btn>
+                  {aiAdvice ? <pre style={{ whiteSpace: "pre-wrap", marginTop: 12, fontSize: 13, lineHeight: 1.7, background: "var(--surface-2)", padding: 12, borderRadius: 8 }}>{aiAdvice}</pre> : null}
+                </div>
+              ) : null}
       {node}
     </div>
   );

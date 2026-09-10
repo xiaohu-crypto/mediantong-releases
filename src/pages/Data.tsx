@@ -115,6 +115,34 @@ export default function Data(props: Props) {
         </div>
       </div>
 
+      <div className="card card-pad" style={{ marginBottom: 16 }}>
+        <div className="h-row"><span className="h-title sm">商机漏斗</span><Chip kind="data" style={{ marginLeft: "auto" }}>各阶段数量</Chip></div>
+        {(() => {
+          const stages = ["线索", "MQL", "SQL", "商机", "报价", "谈判", "签约"];
+          const counts = stages.map((st) => props.deals.filter((d) => !d.deletedAt && d.stage === st).length);
+          const maxC = Math.max(...counts, 1);
+          const lost = props.deals.filter((d) => !d.deletedAt && (d.stage === "输单" || d.stage === "流失")).length;
+          return (
+            <div style={{ padding: "12px 0" }}>
+              {stages.map((st, i) => (
+                <div key={st} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                  <div style={{ width: 40, fontSize: 12, color: "var(--ink-3)", textAlign: "right" }}>{st}</div>
+                  <div style={{ flex: 1, background: "var(--surface-2)", borderRadius: 4, overflow: "hidden" }}>
+                    <div style={{ width: (counts[i] / maxC) * 100 + "%", background: i === stages.length - 1 ? "var(--success)" : "var(--chart-1)", height: 22, display: "flex", alignItems: "center", paddingLeft: 6, fontSize: 11, color: "#fff", fontWeight: 600 }}>
+                      {counts[i]}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, fontSize: 12, color: "var(--ink-3)" }}>
+                <div style={{ width: 40, textAlign: "right" }}>输单</div>
+                <div style={{ flex: 1, color: "var(--danger)" }}>{lost} 个</div>
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+
       <div className="card card-pad">
         <div className="h-row"><span className="h-title sm">行业基准值表</span><Chip gray style={{ marginLeft: "auto" }}>可维护 · 图表解读依据</Chip></div>
         <table className="tgrid">

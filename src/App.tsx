@@ -133,7 +133,15 @@ export default function App() {
       document.documentElement.dataset.titlebar = window.mta?.windowMode ?? "integrated";
     })();
     const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setShowQuick(true); }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setShowQuick(true); return; }
+      if (e.ctrlKey || e.metaKey) {
+        const num = parseInt(e.key, 10);
+        if (num >= 1 && num <= 9) {
+          const navViews: View[] = ["today", "work", "crm", "dev", "media", "kb", "data", "growth", "settings"];
+          const v = navViews[num - 1];
+          if (v) { e.preventDefault(); setView(v); }
+        }
+      }
     };
     window.addEventListener("keydown", onKey);
     if (window.mta) window.mta.onQuickCapture(() => setShowQuick(true));
