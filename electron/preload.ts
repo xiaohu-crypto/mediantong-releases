@@ -16,8 +16,8 @@ contextBridge.exposeInMainWorld("mta", {
   backupWrite: (args: { dir: string; content: string; keep: number }) => ipcRenderer.invoke("backup:write", args),
   onUpdateReady: (cb: (v: string) => void) => { ipcRenderer.on("update:ready", (_e, d) => cb(d.version)); },
   installUpdate: () => ipcRenderer.invoke("update:install"),
-  chatStream: (args) => ipcRenderer.invoke("ai:chatStream", args),
-  onStreamChunk: (cb) => { ipcRenderer.on("ai:stream-chunk", (_e, d) => cb(d.chunk)); },
-  onStreamDone: (cb) => { ipcRenderer.on("ai:stream-done", () => cb()); },
-  onStreamError: (cb) => { ipcRenderer.on("ai:stream-error", (_e, d) => cb(d.error)); },
+  chatStream: (args: { baseUrl: string; apiKey: string; model: string; messages: { role: string; content: string }[] }) => ipcRenderer.invoke("ai:chatStream", args),
+  onStreamChunk: (cb: (chunk: string) => void) => { ipcRenderer.on("ai:stream-chunk", (_e, d) => cb(d.chunk)); },
+  onStreamDone: (cb: () => void) => { ipcRenderer.on("ai:stream-done", () => cb()); },
+  onStreamError: (cb: (err: string) => void) => { ipcRenderer.on("ai:stream-error", (_e, d) => cb(d.error)); },
 });
