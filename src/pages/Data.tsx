@@ -48,6 +48,12 @@ export default function Data(props: Props) {
   const maxV = Math.max(...vals, 1);
 
   const thisMonth = months[5];
+  function momArrow(cur: number, prev: number) {
+    if (!prev) return " · 环比—";
+    const pct = Math.round(((cur - prev) / prev) * 100);
+    const up = pct >= 0;
+    return ' · <span style="color:' + (up ? "var(--success)" : "var(--danger)") + '">' + (up ? "▲" : "▼") + " " + Math.abs(pct) + "%</span>";
+  }
   const monthContracts = contracts.filter((c) => c.signDate.startsWith(thisMonth));
 
   async function addBaseline() {
@@ -90,7 +96,7 @@ export default function Data(props: Props) {
       </div>
 
       <div className="kpis" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, marginBottom: 16 }}>
-        <div className="kpi card-pad card"><div className="muted" style={{ fontSize: "var(--text-xs)" }}>累计签约额</div><div style={{ fontSize: 22, fontWeight: 750 }} className="num">{money(kpiSign)}</div><div className="cell-sub">合同口径</div></div>
+        <div className="kpi card-pad card"><div className="muted" style={{ fontSize: "var(--text-xs)" }}>累计签约额</div><div style={{ fontSize: 22, fontWeight: 750 }} className="num">{money(kpiSign)}</div><div className="cell-sub">合同口径<span dangerouslySetInnerHTML={{ __html: momArrow(vals[5], vals[4]) }} /></div></div>
         <div className="kpi card-pad card"><div className="muted" style={{ fontSize: "var(--text-xs)" }}>已收回款</div><div style={{ fontSize: 22, fontWeight: 750 }} className="num">{money(kpiPaid)}</div><div className="cell-sub">回款率(到期口径)<span className="num"> {collectRate}%</span></div></div>
         <div className="kpi card-pad card"><div className="muted" style={{ fontSize: "var(--text-xs)" }}>综合毛利率</div><div style={{ fontSize: 22, fontWeight: 750 }} className="num">{marginRate}%</div><div className="cell-sub">合同 − 媒体成本(扣返点前)</div></div>
         <div className="kpi card-pad card"><div className="muted" style={{ fontSize: "var(--text-xs)" }}>在途加权商机</div><div style={{ fontSize: 22, fontWeight: 750 }} className="num">{money(weighted)}</div><div className="cell-sub">{activeDeals.length} 个商机</div></div>

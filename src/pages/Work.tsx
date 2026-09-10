@@ -45,6 +45,7 @@ export default function Work(props: Props) {
     await props.reload();
   }
   const [form, setForm] = useState<{ title: string; priority: Task["priority"]; type: Task["type"]; due: string; customerId: string }>({ title: "", priority: "中", type: "任务", due: "", customerId: "" });
+  const [viewMode, setViewMode] = useState<"board" | "table" | "calendar">("board");
 
   const tasks = props.tasks.filter((t) => !t.deletedAt);
   const wip = tasks.filter((t) => t.kanbanCol === "进行中").length;
@@ -73,7 +74,16 @@ export default function Work(props: Props) {
     <div>
       <div className="page-head">
         <div><h1>工作管理系统</h1><div className="date">看板四列 · 拖拽流转 · 进行中 WIP 上限 {WIP_LIMIT}(当前 {wip})</div></div>
-        <div className="actions"><Btn kind="primary" onClick={() => setAddOpen(true)}><IconPlus size={14} /> 新建任务</Btn></div>
+        <div className="actions">
+          <div style={{ display: "inline-flex", gap: 4, marginRight: 8 }}>
+            {([["board", "看板"], ["table", "表格"], ["calendar", "日历"]] as const).map(([k, l]) => (
+              <button key={k} onClick={() => setViewMode(k)}
+                style={{ padding: "5px 12px", fontSize: 12, borderRadius: 6, border: "1px solid var(--border)",
+                  background: viewMode === k ? "var(--brand)" : "transparent", color: viewMode === k ? "#fff" : "var(--ink-2)", cursor: "pointer" }}>{l}</button>
+            ))}
+          </div>
+          <Btn kind="primary" onClick={() => setAddOpen(true)}><IconPlus size={14} /> 新建任务</Btn>
+        </div>
       </div>
 
       {obj ? (
@@ -88,6 +98,7 @@ export default function Work(props: Props) {
         </div>
       ) : null}
 
+      {viewMode === "board" && (
       <div className="kanban">
         {COLS.map((col) => {
           const colTasks = tasks.filter((t) => t.kanbanCol === col);
@@ -120,6 +131,33 @@ export default function Work(props: Props) {
           );
         })}
       </div>
+      )}
+
+      {viewMode === "table" && (
+        <div className="card" style={{ overflow: "hidden" }}>
+          <table className="tgrid">
+            <thead><tr><th>任务</th><th>优先级</th><th>状态</th><th>类型</th><th>截止</th><th>客户</th><th></th></tr></thead>
+            <tbody>
+              {tasks.sort((a, b) => (a.due ?? "9999").localeCompare(b.due ?? "9999")).map((t) => (
+                <tr key={t.id} onClick={() => openEdit(t)} style={{ cursor: "pointer" }}>
+                  <td style={{ fontWeight: 600 }}>{t.title}</td>
+                  <td><Chip kind={t.priority === "高" ? "danger" : t.priority === "中" ? "warn" : "gray"}>{t.priority}</Chip></td>
+                  <td><Chip gray>{t.kanbanCol}</Chip></td>
+                  <td>{t.type}</td>
+                  <td className="num">{t.due ?? "-"}</td>
+                  <td>{t.customerId ? props.customers.find((c) => c.id === t.customerId)?.name ?? "-" : "-"}</td>
+                  <td><Btn kind="data" sm onClick={() => openEdit(t)}>编辑</Btn></td>
+                </tr>
+              ))}
+              {tasks.length === 0 ? <tr><td colSpan={7} style={{ textAlign: "center", color: "var(--ink-3)", padding: 24 }}>暂无任务</td></tr> : null}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {viewMode === "calendar" && (
+        <CalendarView tasks={tasks} customers={props.customers} onOpen={openEdit} />
+      )}
 
       {addOpen ? (
         <Modal title="新建任务" onClose={() => setAddOpen(false)} footer={
@@ -188,4 +226,42 @@ export default function Work(props: Props) {
       {node}
     </div>
   );
+
+
+function CalendarView(props: { tasks: Task[]; customers: Customer[]; onOpen: (t: Task) => void }) {
+  const now = new Date();
+  const year = now.getFullYear(), month = now.getMonth();
+  const first = new Date(year, month, 1);
+  const startDay = (first.getDay() + 6) % 7; // 周一为0
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < startDay; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  const tasksByDay = new Map<string, Task[]>();
+  for (const t of props.tasks) {
+    if (!t.due) continue;
+    const key = t.due;
+    if (!tasksByDay.has(key)) tasksByDay.set(key, []);
+    tasksByDay.get(key)!.push(t);
+  }
+  const fmt = (d: number) => year + "-" + String(month + 1).padStart(2, "0") + "-" + String(d).padStart(2, "0");
+  return (
+    <div className="card" style={{ padding: 16 }}>
+      <div className="h-row" style={{ marginBottom: 10 }}>
+        <span className="h-title sm">{year}年{month + 1}月</span>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 4, fontSize: 11 }}>
+        {["一","二","三","四","五","六","日"].map((d) => <div key={d} style={{ textAlign: "center", fontWeight: 700, color: "var(--ink-4)", padding: 4 }}>{d}</div>)}
+        {cells.map((d, i) => (
+          <div key={i} style={{ minHeight: 70, border: "1px solid var(--border-soft)", borderRadius: 6, padding: 4, background: d === now.getDate() ? "var(--brand-soft)" : "transparent" }}>
+            {d !== null ? <div style={{ fontSize: 11, fontWeight: 600 }}>{d}</div> : null}
+            {d !== null ? (tasksByDay.get(fmt(d)) ?? []).map((t) => (
+              <div key={t.id} onClick={() => props.onOpen(t)} style={{ fontSize: 10, padding: "2px 4px", margin: "2px 0", borderRadius: 3, background: t.priority === "高" ? "#fef2f2" : "var(--surface-2)", cursor: "pointer", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</div>
+            )) : null}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 }

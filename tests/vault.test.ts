@@ -8,7 +8,7 @@ const V2_STORES = [
   "meta", "customers", "contacts", "customerContactRels", "deals",
   "contracts", "payments", "tasks", "objectives", "contactPoints",
   "operationLogs", "settings",
-  "pitches", "suppliers", "resources", "ratecards", "scheduleItems", "postbuys", "notes", "baselines", "aars",
+  "pitches", "suppliers", "resources", "ratecards", "scheduleItems", "postbuys", "notes", "baselines", "aars", "influencers",
 ];
 
 async function makeV2DbWithRows(): Promise<void> {

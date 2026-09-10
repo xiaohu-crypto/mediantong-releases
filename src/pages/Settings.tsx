@@ -136,6 +136,12 @@ export default function SettingsPage(props: { theme: "dark" | "light"; setTheme:
             {vs.mode === "os-protected" ? <Chip kind="green">已启用 · AES-256-GCM</Chip> : <Chip gray>{vs.reason}</Chip>}
           </div>
 
+          <div className="h-row" style={{ marginTop: 20 }}><span className="h-title sm">快捷键</span></div>
+          <div className="alert-line"><span className="txt">快速采集</span><span className="chip data">Ctrl + K</span></div>
+          <div className="alert-line"><span className="txt">全局搜索(顶栏)</span><span className="chip data">↑↓ 选择 · Enter 打开 · Esc 关闭</span></div>
+          <div className="alert-line"><span className="txt">搜索框内清空</span><span className="chip data">Esc</span></div>
+          <p className="muted" style={{ fontSize: "var(--text-xs)", marginTop: 6 }}>更多快捷键自定义(如切换视图)将在后续版本支持;当前为系统内置。</p>
+
         </div>
       )}
 

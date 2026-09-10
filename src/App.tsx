@@ -3,7 +3,7 @@ import { db } from "./db/db";
 import { seedIfEmpty } from "./data/seed";
 import { seedExtraIfEmpty } from "./data/seed2";
 import { rebuildIndex, type SearchDoc } from "./core/search";
-import type { Aar, Baseline, Contact, ContactPoint, Contract, Customer, Deal, Milestone, MediaResource, Note, Objective, Payment, Pitch, PostBuy, RateCard, Rel, ScheduleItem, Supplier, Task } from "./types";
+import type { Aar, Baseline, Contact, ContactPoint, Contract, Customer, Deal, Influencer, Milestone, MediaResource, Note, Objective, Payment, Pitch, PostBuy, RateCard, Rel, ScheduleItem, Supplier, Task } from "./types";
 import Today from "./pages/Today";
 import CRM from "./pages/CRM";
 import Work from "./pages/Work";
@@ -22,6 +22,7 @@ import {
   IconHome, IconPlus, IconUsers, IconTask, IconKb, IconFunnel, IconToday, IconFlag,
   IconMedia, IconChart, IconGrowth, IconSettings, IconMoon, IconSun,
 } from "./components/icons";
+import Notifications from "./pages/Notifications";
 
 declare global {
   interface Window {
@@ -48,11 +49,11 @@ interface DataSet {
   objectives: Objective[]; cps: ContactPoint[]; milestones: Milestone[];
   pitches: Pitch[]; suppliers: Supplier[]; resources: MediaResource[];
   ratecards: RateCard[]; items: ScheduleItem[]; postbuys: PostBuy[];
-  notes: Note[]; baselines: Baseline[]; aars: Aar[];
+  notes: Note[]; baselines: Baseline[]; aars: Aar[]; influencers: Influencer[];
   customFields: { id: string; entity: string; key: string; label: string; type: string; options?: string[] }[];
 }
 
-type View = "today" | "crm" | "work" | "dev" | "media" | "kb" | "data" | "growth" | "settings" | "help";
+type View = "today" | "crm" | "work" | "dev" | "media" | "kb" | "data" | "growth" | "settings" | "help" | "notifications";
 
 const NAV: { key: View; label: string; icon: (p: { size?: number }) => JSX.Element; group: string }[] = [
   { key: "today", label: "今日驾驶舱", icon: IconToday, group: "工作区" },
@@ -90,6 +91,7 @@ async function loadAll(): Promise<DataSet> {
     notes: await alive<Note>("notes"),
     baselines: await alive<Baseline>("baselines"),
     aars: await alive<Aar>("aars"),
+    influencers: await alive<Influencer>("influencers"),
     customFields: await db.getSetting("customFields", [] as { id: string; entity: string; key: string; label: string; type: string; options?: string[] }[]),
   };
 }
@@ -104,6 +106,16 @@ export default function App() {
   const [kbFocus, setKbFocus] = useState<string | null>(null);
 
   const reload = useCallback(async () => { setData(await loadAll()); }, []);
+
+  // 未读通知数:逾期回款 + 14天无接触客户
+  const unreadCount = data ? (
+    data.payments.filter((p) => p.status === "逾期" && !p.deletedAt).length +
+    data.customers.filter((c) => {
+      if (c.deletedAt) return false;
+      const last = data.cps.filter((cp) => cp.customerId === c.id && !cp.deletedAt).sort((a, b) => b.time - a.time)[0];
+      return !!last && Date.now() - last.time > 14 * 86400000;
+    }).length
+  ) : 0;
 
   useEffect(() => {
     void (async () => {
@@ -223,6 +235,10 @@ export default function App() {
           <div className="crumb">媒电通工作台 › <b>{crumb}</b></div>
           <TopSearch onSelect={onSearchSelect} />
           <div className="tb-right">
+            <button className="icon-btn" title="通知中心" onClick={() => setView("notifications")} style={{ position: "relative" }}>
+              🔔
+              {unreadCount > 0 ? <span style={{ position: "absolute", top: 2, right: 2, background: "var(--danger)", color: "#fff", fontSize: 9, minWidth: 14, height: 14, borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 3px" }}>{unreadCount > 99 ? "99+" : unreadCount}</span> : null}
+            </button>
             <button className="btn primary" onClick={() => setShowQuick(true)}><IconPlus size={14} /> 快速采集</button>
             <button className="icon-btn" title="切换主题" onClick={() => switchTheme(theme === "dark" ? "light" : "dark")}>
               {theme === "dark" ? <IconSun size={17} /> : <IconMoon size={17} />}
@@ -249,7 +265,7 @@ export default function App() {
           ) : null}
           {view === "media" && data ? (
             <Media suppliers={data.suppliers} resources={data.resources} ratecards={data.ratecards}
-              items={data.items} postbuys={data.postbuys} customers={data.customers} reload={reload} />
+              items={data.items} postbuys={data.postbuys} customers={data.customers} influencers={data.influencers} reload={reload} />
           ) : null}
           {view === "kb" && data ? (
             <Kb notes={data.notes} reload={reload} focusId={kbFocus} />
@@ -259,6 +275,9 @@ export default function App() {
           ) : null}
           {view === "growth" && data ? (
             <Growth tasks={data.tasks} payments={data.payments} pitches={data.pitches} cps={data.cps} contracts={data.contracts} reload={reload} />
+          ) : null}
+          {view === "notifications" && data ? (
+            <Notifications customers={data.customers} payments={data.payments} cps={data.cps} goCrm={goCrm} reload={reload} />
           ) : null}
           {view === "help" ? <Help /> : null}
           {view === "settings" ? (

@@ -13,6 +13,10 @@ export default function Kb(props: Props) {
   const [draft, setDraft] = useState<{ title: string; content: string; tags: string; para: Note["para"] } | null>(null);
 
   const [mode, setMode] = useState<"list" | "graph">("list");
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiQ, setAiQ] = useState("");
+  const [aiA, setAiA] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
   const [paraFilter, setParaFilter] = useState<"" | Note["para"]>("");
   const notes = props.notes.filter((n) => !n.deletedAt);
   const sel = notes.find((n) => n.id === selId) ?? null;
@@ -36,6 +40,20 @@ export default function Kb(props: Props) {
     const titles = notes.map((n) => n.title);
     return titles.filter((t) => t !== sel.title && sel.content.includes(`[[${t}]]`));
   }, [sel, notes]);
+
+async function askAi() {
+  if (!aiQ.trim()) return;
+  setAiBusy(true); setAiA("");
+  try {
+    const { aiChat } = await import("../core/ai/client");
+    const ctx = props.notes.filter((n) => !n.deletedAt).slice(0, 20).map((n) => "【" + n.title + "】\n" + n.content.slice(0, 800)).join("\n\n");
+    const r = await aiChat([
+      { role: "system", content: "你是知识库助手。基于以下笔记内容回答用户问题,引用来源笔记标题。若笔记中没有相关信息,直接说未找到。\n\n知识库:\n" + ctx },
+      { role: "user", content: aiQ },
+    ]);
+    setAiA(r.ok ? (r.content ?? "无回复") : "调用失败:" + (r.error ?? ""));
+  } finally { setAiBusy(false); }
+}
 
   function openNew() {
     const n: Note = { id: uid("n"), title: "未命名笔记", content: "", tags: [], para: "Resources", versions: [] };
@@ -69,6 +87,7 @@ export default function Kb(props: Props) {
         <div className="actions">
           <Btn kind={mode === "graph" ? "data" : "ghost"} onClick={() => setMode(mode === "graph" ? "list" : "graph")}>{mode === "graph" ? "列表视图" : "知识图谱"}</Btn>
           <Btn kind="ghost" onClick={() => { const url = prompt("粘贴网页 URL 或标题:"); if (url) { void (async () => { const n: Note = { id: uid("n"), title: url.slice(0, 40), content: "来源:" + url + "\n\n", tags: ["外链"], para: "Resources", versions: [] }; await db.put("notes", n, "导入网页笔记"); await props.reload(); setSelId(n.id); })(); } }}>网页剪藏</Btn>
+          <Btn kind="data" onClick={() => setAiOpen(true)}>AI 问答</Btn>
           <Btn kind="primary" onClick={openNew}><IconPlus size={14} /> 新建笔记</Btn>
         </div>
       </div>
@@ -183,7 +202,25 @@ export default function Kb(props: Props) {
           ) : (
             <div className="ph"><div><div className="big">N</div><h2 style={{ fontSize: "var(--text-xl)", fontWeight: 650 }}>选择或新建一条笔记</h2><p>支持 [[双链]]、PARA 归档、标签与版本历史。</p></div></div>
           )}
+
           {node}
+      {aiOpen ? (
+        <div className="drawer-mask open" onClick={() => setAiOpen(false)} />
+      ) : null}
+      {aiOpen ? (
+        <div className="drawer open" style={{ position: "fixed", right: 0, top: 0, bottom: 0, width: 480, zIndex: 100, background: "var(--surface)", boxShadow: "var(--shadow-md)" }}>
+          <div style={{ padding: 16, borderBottom: "1px solid var(--border)" }}>
+            <div className="h-row"><span className="h-title sm">AI 知识库问答</span><button className="icon-btn" onClick={() => setAiOpen(false)}>×</button></div>
+          </div>
+          <div style={{ padding: 16, overflowY: "auto", height: "calc(100% - 140px)" }}>
+            {aiA ? <div style={{ whiteSpace: "pre-wrap", fontSize: 13, lineHeight: 1.7, marginBottom: 12 }}>{aiA}</div> : <p className="muted">基于本地笔记内容回答,已脱敏路由。</p>}
+          </div>
+          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: 12, borderTop: "1px solid var(--border)", display: "flex", gap: 8 }}>
+            <input className="inp" style={{ flex: 1 }} placeholder="问点什么…" value={aiQ} onChange={(e) => setAiQ(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void askAi(); }} />
+            <button className="btn primary" disabled={aiBusy || !aiQ.trim()} onClick={() => { void askAi(); }}>{aiBusy ? "思考中…" : "提问"}</button>
+          </div>
+        </div>
+      ) : null}
           <Field label=""><span /></Field>
         </div>
       </div>
