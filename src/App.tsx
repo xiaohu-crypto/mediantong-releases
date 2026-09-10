@@ -258,7 +258,7 @@ export default function App() {
             <Data contracts={data.contracts} payments={data.payments} deals={data.deals} items={data.items} baselines={data.baselines} reload={reload} />
           ) : null}
           {view === "growth" && data ? (
-            <Growth tasks={data.tasks} payments={data.payments} pitches={data.pitches} reload={reload} />
+            <Growth tasks={data.tasks} payments={data.payments} pitches={data.pitches} cps={data.cps} contracts={data.contracts} reload={reload} />
           ) : null}
           {view === "help" ? <Help /> : null}
           {view === "settings" ? (

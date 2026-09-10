@@ -20,6 +20,7 @@ export interface Deal {
   value: number; probability: number; lastTouchAt: number;
   custom?: Record<string, unknown>;
   meddic?: string[]; bant?: string[];
+  closeDate?: string;
   deletedAt?: number;
 }
 export interface Contract { id: string; customerId: string; name: string; amount: number; signDate: string; status: string; deletedAt?: number; }
@@ -44,8 +45,9 @@ export interface Pitch {
   result: "胜" | "败" | "待定"; lossReason?: string; reviewNote?: string;
   deletedAt?: number;
 }
-export interface Supplier { id: string; name: string; type: "官方" | "代理" | "达人机构"; rebatePolicy?: string; deletedAt?: number; }
-export interface MediaResource { id: string; name: string; type: string; supplierId: string; deletedAt?: number; }
+export interface Supplier { id: string; name: string; type: "官方" | "代理" | "达人机构"; rebatePolicy?: string; intro?: string; contact?: string; deletedAt?: number; }
+export interface PricePoint { name: string; city: string; form: string; size: string; qty: number; footfall: number; price: number; status: "可售" | "占用" | "锁位"; }
+export interface MediaResource { id: string; name: string; type: string; supplierId: string; intro?: string; advantage?: string; cases?: string; places?: PricePoint[]; deletedAt?: number; }
 export interface RateCard { id: string; resourceId: string; version: string; effectiveFrom: string; listPrice: number; deletedAt?: number; }
 export interface ScheduleItem {
   id: string; customerId: string; name: string; resourceId: string;

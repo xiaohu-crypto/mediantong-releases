@@ -198,7 +198,9 @@ table.tgrid tbody tr:hover{background:var(--surface-2)}
 html[data-titlebar="integrated"] .topbar { -webkit-app-region: drag; padding-right: 156px; }
 html[data-titlebar="integrated"] .topbar .btn,
 html[data-titlebar="integrated"] .topbar .icon-btn,
-html[data-titlebar="integrated"] .topbar input { -webkit-app-region: no-drag; }
+html[data-titlebar="integrated"] .topbar input,
+html[data-titlebar="integrated"] .topbar .ts-pop,
+html[data-titlebar="integrated"] .topbar .filter-input { -webkit-app-region: no-drag; }
 /* === 侧栏成熟化(参考成熟应用导航模式):CTA 独立、激活态指示条、系统组沉底、滚动容器 === */
 .sidebar .nav{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;padding-bottom:8px}
 .nav-group.nav-sys{margin-top:auto}

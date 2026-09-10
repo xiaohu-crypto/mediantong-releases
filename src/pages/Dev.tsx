@@ -41,6 +41,23 @@ export default function Dev(props: Props) {
 
   const sel = deals.find((d) => d.id === selected) ?? null;
 
+  const [efOpen, setEfOpen] = useState(false);
+  const [ef, setEf] = useState<{ title: string; value: string; closeDate: string }>({ title: "", value: "", closeDate: "" });
+
+  function openDealEdit(d: Deal) {
+    setEf({ title: d.title, value: String(d.value), closeDate: d.closeDate ?? "" });
+    setEfOpen(true);
+  }
+
+  async function submitDealEdit() {
+    if (!sel) return;
+    if (!ef.title.trim()) { show("商机标题必填"); return; }
+    await db.put("deals", { ...sel, title: ef.title.trim(), value: Number(ef.value) || 0, closeDate: ef.closeDate || undefined }, "编辑商机「" + ef.title.trim() + "」");
+    show("商机已更新");
+    setEfOpen(false);
+    await props.reload();
+  }
+
   async function setStage(d: Deal, stage: DealStage) {
     await db.put("deals", { ...d, stage, probability: PROB[stage] }, `商机「${d.title}」阶段改为 ${stage}`);
     await props.reload();
@@ -101,6 +118,7 @@ export default function Dev(props: Props) {
         <div className="card card-pad" style={{ marginBottom: 16 }}>
           <div className="h-row">
             <span className="h-title sm">{nameOf(sel.customerId)} · {sel.title}</span>
+            <Btn kind="ghost" sm style={{ marginLeft: "auto" }} onClick={() => openDealEdit(sel)}>编辑商机</Btn>
             <select className="sel" style={{ marginLeft: "auto" }} value={sel.stage} onChange={(e) => { void setStage(sel, e.target.value as DealStage); }}>
               {[...STAGES, ...extraStages.filter((s) => !STAGES.includes(s as DealStage))].map((s) => <option key={s} value={s}>{s}{PROB[s as DealStage] !== undefined ? "(" + Math.round(PROB[s as DealStage] * 100) + "%)" : ""}</option>)}
             </select>
@@ -128,6 +146,28 @@ export default function Dev(props: Props) {
           </div>
         </div>
       ) : null}
+      {efOpen && sel ? (
+        <Modal title="编辑商机" onClose={() => setEfOpen(false)} footer={
+          <div className="grow" style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <Btn kind="ghost" onClick={() => setEfOpen(false)}>取消</Btn>
+            <Btn kind="primary" onClick={() => { void submitDealEdit(); }}>保存</Btn>
+          </div>
+        }>
+          <Field label="商机标题">
+            <input className="inp" style={{ width: "100%" }} value={ef.title} onChange={(e) => setEf({ ...ef, title: e.target.value })} />
+          </Field>
+          <div className="field-row">
+            <Field label="金额(元)">
+              <input className="inp num" style={{ width: "100%" }} value={ef.value} onChange={(e) => setEf({ ...ef, value: e.target.value })} />
+            </Field>
+            <Field label="预计成交日(可选)">
+              <input className="inp num" type="date" style={{ width: "100%" }} value={ef.closeDate} onChange={(e) => setEf({ ...ef, closeDate: e.target.value })} />
+            </Field>
+          </div>
+          <p className="muted" style={{ fontSize: "var(--text-xs)" }}>概率由阶段自动派生;阶段在上方下拉调整。</p>
+        </Modal>
+      ) : null}
+
 
       <div className="card" style={{ overflow: "hidden", marginBottom: 16 }}>
         <div className="h-row" style={{ padding: "12px 16px 0" }}><span className="h-title sm">比稿管理(投入/竞对/结果/复盘)</span></div>

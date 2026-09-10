@@ -17,6 +17,33 @@ export default function Work(props: Props) {
   const [dragId, setDragId] = useState<string | null>(null);
   const [over, setOver] = useState<KanbanCol | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [eform, setEform] = useState<{ title: string; priority: Task["priority"]; due: string; customerId: string; kanbanCol: KanbanCol }>({ title: "", priority: "中", due: "", customerId: "", kanbanCol: "待办" });
+
+  function openEdit(t: Task) {
+    setEditId(t.id);
+    setEform({ title: t.title, priority: t.priority, due: t.due ?? "", customerId: t.customerId ?? "", kanbanCol: t.kanbanCol });
+  }
+
+  async function submitEdit() {
+    if (!editId || !eform.title.trim()) { show("任务标题必填"); return; }
+    const t0 = tasks.find((x) => x.id === editId);
+    if (!t0) return;
+    await db.put("tasks", { ...t0, title: eform.title.trim(), priority: eform.priority, due: eform.due || undefined, customerId: eform.customerId || undefined, kanbanCol: eform.kanbanCol }, "编辑任务");
+    show("任务已更新");
+    setEditId(null);
+    await props.reload();
+  }
+
+  async function removeTask() {
+    if (!editId) return;
+    const t0 = tasks.find((x) => x.id === editId);
+    if (!t0) return;
+    await db.softDelete("tasks", editId, "删除任务「" + t0.title + "」");
+    show("任务已移入回收站");
+    setEditId(null);
+    await props.reload();
+  }
   const [form, setForm] = useState<{ title: string; priority: Task["priority"]; type: Task["type"]; due: string; customerId: string }>({ title: "", priority: "中", type: "任务", due: "", customerId: "" });
 
   const tasks = props.tasks.filter((t) => !t.deletedAt);
@@ -77,7 +104,7 @@ export default function Work(props: Props) {
               </div>
               <div className="kcol-body">
                 {colTasks.map((t) => (
-                  <div className="kcard" key={t.id} draggable onDragStart={() => setDragId(t.id)} onDragEnd={() => setDragId(null)}>
+                  <div className="kcard" key={t.id} draggable onDragStart={() => setDragId(t.id)} onDragEnd={() => setDragId(null)} onClick={() => openEdit(t)} title="点击编辑,拖拽流转" style={{ cursor: "pointer" }}>
                     <div className="t">{t.title}</div>
                     <div className="m">
                       <Chip kind={t.priority === "高" ? "danger" : t.priority === "中" ? "warn" : "gray"}>{t.priority}</Chip>
@@ -120,6 +147,42 @@ export default function Work(props: Props) {
               {props.customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </Field>
+        </Modal>
+      ) : null}
+      {editId ? (
+        <Modal title="编辑任务" onClose={() => setEditId(null)} footer={
+          <div className="grow" style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <Btn kind="danger" onClick={() => { void removeTask(); }}>删除</Btn>
+            <Btn kind="ghost" onClick={() => setEditId(null)}>取消</Btn>
+            <Btn kind="primary" onClick={() => { void submitEdit(); }}>保存</Btn>
+          </div>
+        }>
+          <Field label="标题">
+            <input className="inp" style={{ width: "100%" }} value={eform.title} onChange={(e) => setEform({ ...eform, title: e.target.value })} />
+          </Field>
+          <div className="field-row">
+            <Field label="优先级">
+              <select className="sel" style={{ width: "100%" }} value={eform.priority} onChange={(e) => setEform({ ...eform, priority: e.target.value as Task["priority"] })}>
+                {["高", "中", "低"].map((x) => <option key={x}>{x}</option>)}
+              </select>
+            </Field>
+            <Field label="所在列">
+              <select className="sel" style={{ width: "100%" }} value={eform.kanbanCol} onChange={(e) => setEform({ ...eform, kanbanCol: e.target.value as KanbanCol })}>
+                {COLS.map((x) => <option key={x}>{x}</option>)}
+              </select>
+            </Field>
+          </div>
+          <div className="field-row">
+            <Field label="截止日(可选)">
+              <input className="inp num" type="date" style={{ width: "100%" }} value={eform.due} onChange={(e) => setEform({ ...eform, due: e.target.value })} />
+            </Field>
+            <Field label="关联客户(可选)">
+              <select className="sel" style={{ width: "100%" }} value={eform.customerId} onChange={(e) => setEform({ ...eform, customerId: e.target.value })}>
+                <option value="">不关联</option>
+                {props.customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </Field>
+          </div>
         </Modal>
       ) : null}
       {node}

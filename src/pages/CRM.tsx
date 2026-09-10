@@ -18,6 +18,30 @@ interface Props {
 
 interface SavedView { name: string; q: string; industry: string; sortKey: "name" | "health" | "deal" }
 
+function MediaStrategyView(props: { customer: Customer; onEdit: () => void }) {
+  const s = ((props.customer.custom ?? {}) as Record<string, Record<string, string>>).mediaStrategy;
+  const empty = !s || (!s.audience && !s.budget && !s.mix && !s.resources && !s.note);
+  return (
+    <div style={{ padding: "12px 18px" }}>
+      <div className="h-row" style={{ marginBottom: 8 }}>
+        <span className="h-title sm" style={{ fontSize: 13 }}>客户专属媒介策略(每客户独立,不共用)</span>
+        <Btn kind="primary" sm style={{ marginLeft: "auto" }} onClick={props.onEdit}>{empty ? "填写策略" : "编辑"}</Btn>
+      </div>
+      {empty ? (
+        <p className="muted" style={{ fontSize: "var(--text-sm)" }}>该客户尚未配置专属媒介策略。点"填写策略"记录目标受众、预算、建议配比、首选资源。</p>
+      ) : (
+        <div className="kv-grid" style={{ gap: 10 }}>
+          {s?.audience ? <div className="kv"><span className="k">目标受众</span><span className="v" style={{ fontSize: "var(--text-sm)" }}>{s.audience}</span></div> : null}
+          {s?.budget ? <div className="kv"><span className="k">预算区间</span><span className="v" style={{ fontSize: "var(--text-sm)" }}>{s.budget}</span></div> : null}
+          {s?.mix ? <div className="kv"><span className="k">建议配比</span><span className="v" style={{ fontSize: "var(--text-sm)" }}>{s.mix}</span></div> : null}
+          {s?.resources ? <div className="kv"><span className="k">首选资源</span><span className="v" style={{ fontSize: "var(--text-sm)" }}>{s.resources}</span></div> : null}
+          {s?.note ? <div className="kv"><span className="k">备注</span><span className="v" style={{ fontSize: "var(--text-sm)" }}>{s.note}</span></div> : null}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const CH = { 微信: "var(--success)", 拜访: "var(--brand)", 电话: "var(--data)", 邮件: "var(--ink-4)" } as const;
 
 export default function CRM(props: Props) {
@@ -26,7 +50,47 @@ export default function CRM(props: Props) {
   const [industry, setIndustry] = useState("");
   const [sortKey, setSortKey] = useState<"name" | "health" | "deal">("name");
   const [openId, setOpenId] = useState<string | null>(props.focusCustomerId ?? null);
-  const [tab, setTab] = useState<"概览" | "决策链" | "时间线" | "合同与回款">("概览");
+  const [timeline, setTimeline] = useState<{ ts: number; kind: string; title: string }[]>([]);
+  useEffect(() => {
+    void (async () => {
+      if (!openId) { setTimeline([]); return; }
+      const items: { ts: number; kind: string; title: string }[] = [];
+      const deals = (await db.getAll<Deal>("deals")).filter((d) => d.customerId === openId && !d.deletedAt);
+      const dealIds = new Set(deals.map((d) => d.id));
+      for (const cp of (await db.getAll<ContactPoint>("contactPoints"))) {
+        if (!cp.deletedAt && cp.customerId === openId) items.push({ ts: cp.time, kind: "接触", title: cp.channel + " · " + cp.summary });
+      }
+      for (const t of (await db.getAll<Task>("tasks"))) {
+        if (!t.deletedAt && t.customerId === openId) items.push({ ts: t.due ? new Date(t.due).getTime() : t.kanbanCol === "完成" ? Date.now() : Date.now(), kind: "任务", title: "[" + t.kanbanCol + "] " + t.title });
+      }
+      for (const lg of (await db.getAll<{ id: string; ts: number; what: string; entityType: string; entityId: string }>("operationLogs"))) {
+        if (lg.entityType === "deals" && dealIds.has(lg.entityId)) items.push({ ts: lg.ts, kind: "商机", title: lg.what });
+        else if (lg.entityType === "payments") {
+          const pay = (await db.get<Payment>("payments", lg.entityId));
+          if (pay && pay.customerId === openId) items.push({ ts: lg.ts, kind: "回款", title: lg.what });
+        }
+      }
+      items.sort((a, b) => b.ts - a.ts);
+      setTimeline(items.slice(0, 80));
+    })();
+  }, [openId]);
+  const [tab, setTab] = useState<"概览" | "决策链" | "时间线" | "合同与回款" | "媒介策略">("概览");
+  /* 客户级媒介策略(存于 customer.custom.mediaStrategy) */
+  const [strategyEdit, setStrategyEdit] = useState(false);
+  const [strategyDraft, setStrategyDraft] = useState({ audience: "", budget: "", mix: "", resources: "", note: "" });
+  function openStrategyEdit() {
+    if (!drawerC) return;
+    const s = ((drawerC.custom ?? {}) as Record<string, Record<string, string>>).mediaStrategy ?? {};
+    setStrategyDraft({ audience: s.audience ?? "", budget: s.budget ?? "", mix: s.mix ?? "", resources: s.resources ?? "", note: s.note ?? "" });
+    setStrategyEdit(true);
+  }
+  async function saveStrategy() {
+    if (!drawerC) return;
+    await db.put("customers", { ...drawerC, custom: { ...(drawerC.custom ?? {}), mediaStrategy: strategyDraft } }, "保存客户「" + drawerC.name + "」媒介策略");
+    setStrategyEdit(false);
+    show("客户媒介策略已保存");
+    await props.reload();
+  }
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [dense, setDense] = useState(false);
@@ -230,7 +294,7 @@ export default function CRM(props: Props) {
               <button className="icon-btn" style={{ marginLeft: "auto" }} onClick={() => setOpenId(null)} aria-label="关闭"><IconClose size={16} /></button>
             </div>
             <div className="dtabs">
-              {(["概览", "决策链", "时间线", "合同与回款"] as const).map((t) => (
+              {(["概览", "决策链", "时间线", "合同与回款", "媒介策略"] as const).map((t) => (
                 <span key={t} className={"dtab" + (tab === t ? " active" : "")} onClick={() => setTab(t)}>{t}</span>
               ))}
             </div>
@@ -273,16 +337,16 @@ export default function CRM(props: Props) {
               )}
               {tab === "时间线" && (
                 <div style={{ paddingTop: 10 }}>
-                  {drawerCps.map((p) => (
-                    <div className="tl-item" key={p.id}>
-                      <span className="tl-dot" style={{ background: CH[p.channel] }} />
+                  {timeline.map((it, i) => (
+                    <div className="tl-item" key={i}>
+                      <span className="tl-dot" style={{ background: it.kind === "接触" ? CH["微信"] : it.kind === "任务" ? "#f59e0b" : it.kind === "商机" ? "var(--brand)" : "var(--data)" }} />
                       <div>
-                        <div className="tl-title">{p.channel} · {p.summary}</div>
-                        <div className="tl-time">{new Date(p.time).toLocaleString("zh-CN")}</div>
+                        <div className="tl-title"><span className="chip gray" style={{ fontSize: 10, padding: "0 6px", marginRight: 6 }}>{it.kind}</span>{it.title}</div>
+                        <div className="tl-time">{new Date(it.ts).toLocaleString("zh-CN")}</div>
                       </div>
                     </div>
                   ))}
-                  {drawerCps.length === 0 ? <p className="muted" style={{ padding: "0 18px" }}>暂无接触点</p> : null}
+                  {timeline.length === 0 ? <p className="muted" style={{ padding: "0 18px" }}>暂无动态(接触点/任务/商机/回款事件将按时间合并展示)</p> : null}
                 </div>
               )}
               {tab === "合同与回款" && (
@@ -309,6 +373,9 @@ export default function CRM(props: Props) {
                   {drawerContracts.length === 0 ? <p className="muted">暂无合同</p> : null}
                 </div>
               )}
+              {tab === "媒介策略" && drawerC ? (
+                <MediaStrategyView customer={drawerC} onEdit={openStrategyEdit} />
+              ) : null}
             </div>
             <div className="drawer-foot">
               <Btn kind="primary" onClick={() => show("演示:接触点快速记录属 P1 管线")}>记录跟进</Btn>
@@ -348,6 +415,17 @@ export default function CRM(props: Props) {
       ) : null}
 
       <ImportCustomers open={importOpen} onClose={() => setImportOpen(false)} existingNames={customers.map((c) => c.name)} reload={props.reload} />
+      {strategyEdit ? (
+        <Modal title="客户媒介策略" onClose={() => setStrategyEdit(false)} footer={
+          <div className="grow"><Btn kind="ghost" onClick={() => setStrategyEdit(false)}>取消</Btn><Btn kind="primary" onClick={() => { void saveStrategy(); }}>保存</Btn></div>
+        }>
+          <Field label="目标受众"><input className="inp" style={{ width: "100%" }} value={strategyDraft.audience} onChange={(e) => setStrategyDraft({ ...strategyDraft, audience: e.target.value })} placeholder="如:25-35岁新一线女性,美妆护肤" /></Field>
+          <Field label="预算区间"><input className="inp" style={{ width: "100%" }} value={strategyDraft.budget} onChange={(e) => setStrategyDraft({ ...strategyDraft, budget: e.target.value })} placeholder="如:月度 30-80 万" /></Field>
+          <Field label="建议配比"><input className="inp" style={{ width: "100%" }} value={strategyDraft.mix} onChange={(e) => setStrategyDraft({ ...strategyDraft, mix: e.target.value })} placeholder="如:种草50% / 效果30% / 品牌20%" /></Field>
+          <Field label="首选资源"><input className="inp" style={{ width: "100%" }} value={strategyDraft.resources} onChange={(e) => setStrategyDraft({ ...strategyDraft, resources: e.target.value })} placeholder="如:抖音信息流+小红书达人+分众电梯" /></Field>
+          <Field label="备注"><textarea className="inp" rows={2} style={{ width: "100%" }} value={strategyDraft.note} onChange={(e) => setStrategyDraft({ ...strategyDraft, note: e.target.value })} /></Field>
+        </Modal>
+      ) : null}
       {node}
     </div>
   );

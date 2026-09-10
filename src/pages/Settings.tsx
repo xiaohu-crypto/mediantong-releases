@@ -8,13 +8,18 @@ import { ensureVault, getVaultStatus, type VaultStatus } from "../core/vault";
 import { Btn, Chip, Field, useToast } from "../ui/common";
 import { IconRefresh } from "../components/icons";
 
-type Tab = "设置" | "回收站" | "操作日志" | "标签治理" | "自定义字段";
+type Tab = "外观" | "AI模型" | "通知与备份" | "数据与隐私" | "回收站" | "操作日志" | "标签治理" | "自定义字段";
+
+const TAB_GROUPS: { group: string; tabs: Tab[] }[] = [
+  { group: "偏好", tabs: ["外观", "AI模型", "通知与备份", "数据与隐私"] },
+  { group: "管理", tabs: ["自定义字段", "标签治理", "回收站", "操作日志"] },
+];
 
 interface LogRow { id: string; ts: number; who: string; what: string; entityType: string; entityId: string; before: unknown | null }
 
 export default function SettingsPage(props: { theme: "dark" | "light"; setTheme: (t: "dark" | "light") => void; reload: () => Promise<void>; customers: { id: string; name: string }[]; notes: { id: string; title: string; tags: string[]; content: string }[]; customFields: { id: string; entity: string; key: string; label: string; type: string; options?: string[] }[] }) {
   const { show, node } = useToast();
-  const [tab, setTab] = useState<Tab>("设置");
+  const [tab, setTab] = useState<Tab>("外观");
   const [trash, setTrash] = useState<{ store: string; id: string; title: string; deletedAt: number }[]>([]);
   const [logs, setLogs] = useState<LogRow[]>([]);
   const [autostart, setAutostart] = useState(false);
@@ -83,14 +88,26 @@ export default function SettingsPage(props: { theme: "dark" | "light"; setTheme:
         <div><h1>系统管理</h1><div className="date">设置 / 回收站(30 天) / 操作日志(可撤销)</div></div>
       </div>
 
-      <div className="tabs">
-        {(["设置", "回收站", "操作日志", "标签治理"] as Tab[]).map((t) => (
-          <span key={t} className={"tab" + (tab === t ? " active" : "")} onClick={() => setTab(t)}>{t}</span>
-        ))}
-      </div>
-
-      {tab === "设置" && (
-        <div className="card card-pad" style={{ maxWidth: 640 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "180px 1fr", gap: 16, alignItems: "start" }}>
+        <div className="card" style={{ padding: "8px 0", position: "sticky", top: 0 }}>
+          {TAB_GROUPS.map((g) => (
+            <div key={g.group} style={{ marginBottom: 8 }}>
+              <div style={{ padding: "8px 16px 4px", fontSize: 11, color: "var(--ink-4)", letterSpacing: ".06em", fontWeight: 700 }}>{g.group}</div>
+              {g.tabs.map((t) => (
+                <div key={t} onClick={() => setTab(t)}
+                  style={{ padding: "8px 16px", cursor: "pointer", fontSize: "var(--text-sm)",
+                    background: tab === t ? "var(--surface-2)" : "transparent",
+                    borderLeft: tab === t ? "3px solid var(--brand)" : "3px solid transparent",
+                    fontWeight: tab === t ? 600 : 400 }}>
+                  {t}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+        <div style={{ minWidth: 0 }}>
+      {tab === "外观" && (
+        <div className="card card-pad">
           <div className="alert-line"><span className="txt">主题</span>
             <select className="sel" value={props.theme} onChange={(e) => applyTheme(e.target.value as "dark" | "light")}>
               <option value="dark">深色(默认)</option>
@@ -119,7 +136,12 @@ export default function SettingsPage(props: { theme: "dark" | "light"; setTheme:
             {vs.mode === "os-protected" ? <Chip kind="green">已启用 · AES-256-GCM</Chip> : <Chip gray>{vs.reason}</Chip>}
           </div>
 
-          <div className="h-row" style={{ marginTop: 18 }}>
+        </div>
+      )}
+
+      {tab === "通知与备份" && (
+        <div className="card card-pad">
+          <div className="h-row" style={{ marginTop: 0, marginBottom: 10 }}>
             <span className="h-title sm">备份与恢复</span>
             <span style={{ marginLeft: "auto" }}><IconRefresh size={16} /></span>
           </div>
@@ -160,7 +182,12 @@ export default function SettingsPage(props: { theme: "dark" | "light"; setTheme:
           </div>
           <div className="alert-line"><span className="txt">错过补发</span><Chip kind="green">已启用(启动时检查,超 8 小时自动补一条汇总)</Chip></div>
 
-          <div className="h-row" style={{ marginTop: 20 }}><span className="h-title sm">AI 模型(OpenRouter · 云)</span></div>
+        </div>
+      )}
+
+      {tab === "AI模型" && (
+        <div className="card card-pad">
+          <div className="h-row" style={{ marginTop: 0, marginBottom: 10 }}><span className="h-title sm">AI 模型(OpenRouter · 云)</span></div>
           <div className="alert-line"><span className="txt">云模型总开关</span>
             <Btn kind={aiCfg.cloudEnabled ? "data" : "ghost"} sm onClick={() => { const v = !aiCfg.cloudEnabled; setAiCfg({ ...aiCfg, cloudEnabled: v }); void saveAiConfig({ ...aiCfg, cloudEnabled: v }); show(v ? "云模型已开启" : "云模型已关闭(全部走本地)"); }}>{aiCfg.cloudEnabled ? "已开启" : "已关闭"}</Btn>
           </div>
@@ -204,10 +231,18 @@ export default function SettingsPage(props: { theme: "dark" | "light"; setTheme:
           {aiResult ? <p style={{ fontSize: "var(--text-xs)", color: aiResult.startsWith("连接成功") ? "var(--success)" : "var(--danger)" }}>{aiResult}</p> : null}
           {usage ? (() => { const q = quotaState(usage, aiCfg.monthlyTokenLimit ?? 0); return (<p className="muted" style={{ fontSize: "var(--text-xs)" }}>本月云调用:{usage.calls} 次 / {usage.tokens} tokens{aiCfg.monthlyTokenLimit ? ` · 限额 ${aiCfg.monthlyTokenLimit}` : ""}{q.level !== "ok" ? <span style={{ marginLeft: 6 }}><Chip kind={q.level === "exceeded" ? "danger" : "data"}>{q.level === "exceeded" ? "已达限额,云调用暂停" : "接近限额(≥80%)"}</Chip></span> : null}</p>); })() : null}
 
-          <div className="h-row" style={{ marginTop: 14 }}><span className="h-title sm">数据打包交接(按客户)</span></div>
+        </div>
+      )}
+
+      {tab === "数据与隐私" && (
+        <div className="card card-pad">
+          <div className="h-row" style={{ marginTop: 0, marginBottom: 10 }}><span className="h-title sm">数据打包交接(按客户)</span></div>
           <CustomerPack customers={props.customers} onDone={show} />
           <p className="muted" style={{ fontSize: "var(--text-xs)", marginTop: 10 }}>
             备份含 schemaVersion 与导出时间;恢复按仓覆盖写入;往返一致性由单元测试保障(tests/core.test.ts + 存储层)。
+          </p>
+          <p className="muted" style={{ fontSize: "var(--text-xs)", marginTop: 10 }}>
+            数据全部本地存储,静态加密(AES-256-GCM),密钥经 OS 凭据保护。不上云、不上传。
           </p>
         </div>
       )}
@@ -258,6 +293,8 @@ export default function SettingsPage(props: { theme: "dark" | "light"; setTheme:
       )}
       {tab === "标签治理" && <TagGovernance notes={props.notes} reload={props.reload} />}
       {tab === "自定义字段" && <CustomFieldsGov defs={props.customFields} reload={props.reload} />}
+        </div>
+      </div>
 
       {node}
     </div>

@@ -42,6 +42,13 @@ export default function Today(props: Props) {
 
   const lowHealth = props.customers.filter((c) => !c.deletedAt && healthOf(c.id, props.cps, props.payments) < 60);
   const overdue = props.payments.filter((p) => p.status === "逾期" && !p.deletedAt);
+  // D-05 跟进超期:14 天无任何接触点的在册客户(无接触记录的新客户不误报)
+  const STALE_DAYS = 14;
+  const staleList = props.customers.filter((c) => {
+    if (c.deletedAt) return false;
+    const last = props.cps.filter((cp) => cp.customerId === c.id && !cp.deletedAt).sort((a, b) => b.time - a.time)[0];
+    return !!last && Date.now() - last.time > STALE_DAYS * 86400000;
+  });
   const dueSoon = props.payments.filter((p) => {
     if (p.status !== "未到" || p.deletedAt) return false;
     const diff = (new Date(p.dueDate).getTime() - Date.now()) / 86400000;
@@ -151,7 +158,7 @@ export default function Today(props: Props) {
         <div className="card card-pad">
           <div className="h-row" style={{ marginBottom: 4 }}>
             <span className="h-title sm">预警</span>
-            <Chip kind="danger">{lowHealth.length > 0 ? "需关注" : "无"}</Chip>
+            <Chip kind="danger">{lowHealth.length + staleList.length > 0 ? "需关注 " + (lowHealth.length + staleList.length) : "无"}</Chip>
           </div>
           {lowHealth.map((c) => (
             <div className="alert-line" key={c.id}>
@@ -168,7 +175,16 @@ export default function Today(props: Props) {
               </span>'
             </div>
           ))}
-          {lowHealth.length === 0 ? <p className="muted">暂无预警</p> : null}
+          {staleList.map((c) => (
+            <div className="alert-line" key={"s-" + c.id}>
+              <span className="dot-flag" style={{ background: "var(--warn)" }} />
+              <span className="txt">跟进超期:<b>{c.name}</b>(超过 {STALE_DAYS} 天无接触记录)</span>
+              <span style={{ display: "inline-flex", gap: 6 }}>
+              <button className="btn done sm" onClick={() => props.goCrm(c.id)}>去跟进</button>
+              </span>
+            </div>
+          ))}
+          {lowHealth.length === 0 && staleList.length === 0 ? <p className="muted">暂无预警</p> : null}
         </div>
 
         <div className="card card-pad">

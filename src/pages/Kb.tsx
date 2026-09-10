@@ -13,6 +13,7 @@ export default function Kb(props: Props) {
   const [draft, setDraft] = useState<{ title: string; content: string; tags: string; para: Note["para"] } | null>(null);
 
   const [mode, setMode] = useState<"list" | "graph">("list");
+  const [paraFilter, setParaFilter] = useState<"" | Note["para"]>("");
   const notes = props.notes.filter((n) => !n.deletedAt);
   const sel = notes.find((n) => n.id === selId) ?? null;
 
@@ -59,16 +60,17 @@ export default function Kb(props: Props) {
     await props.reload();
   }
 
-  const filtered = notes.filter((n) => q === "" || n.title.includes(q) || n.content.includes(q) || n.tags.some((t) => t.includes(q)));
+  const filtered = notes.filter((n) => (paraFilter === "" || n.para === paraFilter) && (q === "" || n.title.includes(q) || n.content.includes(q) || n.tags.some((t) => t.includes(q))));
 
   return (
     <div>
       <div className="page-head">
         <div><h1>知识学习系统</h1><div className="date">PARA 归档 · 双链 [[]] · 版本历史 · 标签检索</div></div>
-'        <div className="actions">
+        <div className="actions">
           <Btn kind={mode === "graph" ? "data" : "ghost"} onClick={() => setMode(mode === "graph" ? "list" : "graph")}>{mode === "graph" ? "列表视图" : "知识图谱"}</Btn>
+          <Btn kind="ghost" onClick={() => { const url = prompt("粘贴网页 URL 或标题:"); if (url) { void (async () => { const n: Note = { id: uid("n"), title: url.slice(0, 40), content: "来源:" + url + "\n\n", tags: ["外链"], para: "Resources", versions: [] }; await db.put("notes", n, "导入网页笔记"); await props.reload(); setSelId(n.id); })(); } }}>网页剪藏</Btn>
           <Btn kind="primary" onClick={openNew}><IconPlus size={14} /> 新建笔记</Btn>
-        </div>'
+        </div>
       </div>
 
       {mode === "graph" ? (
@@ -111,6 +113,15 @@ export default function Kb(props: Props) {
             <div className="filter-input" style={{ maxWidth: "none" }}>
               <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="搜索标题/内容/标签…" />
             </div>
+          </div>
+          <div style={{ padding: "6px 12px 0", display: "flex", gap: 4, flexWrap: "wrap" }}>
+            {(["", "Projects", "Areas", "Resources", "Archives"] as const).map((p) => (
+              <button key={p || "all"} onClick={() => setParaFilter(p)}
+                style={{ padding: "3px 10px", fontSize: 11, borderRadius: 999, border: "1px solid var(--border)",
+                  background: paraFilter === p ? "var(--brand)" : "transparent", color: paraFilter === p ? "#fff" : "var(--ink-2)", cursor: "pointer" }}>
+                {p || "全部"}
+              </button>
+            ))}
           </div>
           <div style={{ maxHeight: "60vh", overflowY: "auto" }}>
             {filtered.map((n) => (
