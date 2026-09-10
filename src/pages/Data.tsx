@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { db } from "../db/db";
 import { weightedValue } from "../core/metrics";
-import type { Baseline, Contract, Deal, Payment, ScheduleItem } from "../types";
+import type { Baseline, Contract, Deal, Payment, ScheduleItem, PostBuy } from "../types";
 import { Btn, Chip, Field, money, uid, useToast } from "../ui/common";
 
 interface Props {
   contracts: Contract[]; payments: Payment[]; deals: Deal[]; items: ScheduleItem[]; baselines: Baseline[];
+  postbuys?: import("../types").PostBuy[]; resources?: import("../types").MediaResource[];
   reload: () => Promise<void>;
 }
 
@@ -143,8 +144,34 @@ export default function Data(props: Props) {
         })()}
       </div>
 
+      <div className="card card-pad" style={{ marginBottom: 16 }}>
+        <div className="h-row"><span className="h-title sm">投放ROI看板</span><Chip kind="data" style={{ marginLeft: "auto" }}>PostBuy 口径</Chip></div>
+        {(() => {
+          const pbs = (props.postbuys ?? []).filter((p) => !p.deletedAt);
+          if (pbs.length === 0) return <p className="muted" style={{ padding: 12 }}>暂无投后数据,去媒介页录入PostBuy</p>;
+          const resName = (id: string) => (props.resources ?? []).find((r) => r.id === id)?.name ?? id;
+          return (
+            <table className="tgrid">
+              <thead><tr><th>媒体资源</th><th>月份</th><th>曝光</th><th>CPM</th><th>ROI</th><th>CTR</th></tr></thead>
+              <tbody>
+                {pbs.slice(-10).reverse().map((pb: PostBuy) => (
+                  <tr key={pb.id}>
+                    <td style={{ fontWeight: 600 }}>{resName(pb.resourceId)}</td>
+                    <td>{pb.month}</td>
+                    <td className="num">{pb.actualImpression.toLocaleString()}</td>
+                    <td className="num">¥{pb.cpm}</td>
+                    <td className="num" style={{ color: pb.roi >= 1 ? "var(--success)" : "var(--danger)", fontWeight: 700 }}>{pb.roi}x</td>
+                    <td className="num">{pb.ctr ? pb.ctr + "%" : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          );
+        })()}
+      </div>
+
       <div className="card card-pad">
-        <div className="h-row"><span className="h-title sm">行业基准值表</span><Chip gray style={{ marginLeft: "auto" }}>可维护 · 图表解读依据</Chip></div>
+        <div className="h-row"><span className="h-title sm">行业基准值表</span><button className="btn ghost sm" style={{ marginLeft: "auto" }} onClick={() => window.print()}>导出PDF</button><Chip gray style={{ marginLeft: "auto" }}>可维护 · 图表解读依据</Chip></div>
         <table className="tgrid">
           <thead><tr><th>行业/维度</th><th>指标</th><th>基准值</th><th>来源</th></tr></thead>
           <tbody>

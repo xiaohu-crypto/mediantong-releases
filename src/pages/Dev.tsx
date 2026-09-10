@@ -29,6 +29,7 @@ export default function Dev(props: Props) {
   const [extraStages, setExtraStages] = useState<string[]>([]);
   useEffect(() => { void (async () => setExtraStages(await db.getSetting<string[]>("customStages", [])))(); }, []);
   const [pf, setPf] = useState({ name: "", customerId: "", date: new Date().toISOString().slice(0, 10), investment: "", competitors: "", result: "待定", lossReason: "", reviewNote: "" });
+  const [aiPitchBusy, setAiPitchBusy] = useState(false);
 
   const deals = props.deals.filter((d) => !d.deletedAt);
   const nameOf = (id: string) => props.customers.find((c) => c.id === id)?.name ?? "未知客户";
@@ -229,7 +230,24 @@ export default function Dev(props: Props) {
             </Field>
             <Field label={pf.result === "败" ? "败稿原因" : "备注(可选)"}><input className="inp" style={{ width: "100%" }} value={pf.lossReason} onChange={(e) => setPf({ ...pf, lossReason: e.target.value })} /></Field>
           </div>
-          <Field label="复盘要点"><textarea className="inp" rows={2} style={{ width: "100%" }} value={pf.reviewNote} onChange={(e) => setPf({ ...pf, reviewNote: e.target.value })} /></Field>
+          <Field label={"复盘要点 " + (pf.customerId ? "" : "(选客户后可用AI)")}>
+          <div style={{ display: "flex", gap: 6 }}>
+            <textarea className="inp" rows={2} style={{ flex: 1, width: "100%" }} value={pf.reviewNote} onChange={(e) => setPf({ ...pf, reviewNote: e.target.value })} />
+            <Btn kind="ghost" sm disabled={aiPitchBusy || !pf.customerId} onClick={() => {
+              setAiPitchBusy(true);
+              void (async () => {
+                const { aiChat } = await import("../core/ai/client");
+                const cust = props.customers.find((c) => c.id === pf.customerId);
+                const r = await aiChat([
+                  { role: "system", content: "你是资深广告投放策划,根据客户信息写一段比稿复盘话术,200字以内,突出投放亮点和下一步建议。" },
+                  { role: "user", content: "客户:" + (cust?.name ?? "") + "\n行业:" + (cust?.industry ?? "") + "\n竞争对手:" + pf.competitors + "\n投入:" + pf.investment },
+                ]);
+                setPf((prev) => ({ ...prev, reviewNote: r.ok ? (r.content ?? "") : "AI调用失败" }));
+                setAiPitchBusy(false);
+              })();
+            }}>{aiPitchBusy ? "…" : "✦"}</Btn>
+          </div>
+        </Field>
         </Modal>
       ) : null}
       {node}

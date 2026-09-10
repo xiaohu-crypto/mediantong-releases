@@ -139,8 +139,9 @@ export default function App() {
       document.documentElement.setAttribute("data-theme", t);
       document.documentElement.dataset.titlebar = window.mta?.windowMode ?? "integrated";
     })();
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setShowQuick(true); return; }
+    const onKey = async (e: KeyboardEvent) => {
+      const qk = await db.getSetting<{ key: string }>("quickKey", { key: "k" });
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === qk.key) { e.preventDefault(); setShowQuick(true); return; }
       if (e.ctrlKey || e.metaKey) {
         const num = parseInt(e.key, 10);
         if (num >= 1 && num <= 9) {
@@ -300,7 +301,7 @@ export default function App() {
             <Kb notes={data.notes} reload={reload} focusId={kbFocus} />
           ) : null}
           {view === "data" && data ? (
-            <Data contracts={data.contracts} payments={data.payments} deals={data.deals} items={data.items} baselines={data.baselines} reload={reload} />
+            <Data contracts={data.contracts} payments={data.payments} deals={data.deals} items={data.items} baselines={data.baselines} postbuys={data.postbuys} resources={data.resources} reload={reload} />
           ) : null}
           {view === "growth" && data ? (
             <Growth tasks={data.tasks} payments={data.payments} pitches={data.pitches} cps={data.cps} contracts={data.contracts} reload={reload} />
