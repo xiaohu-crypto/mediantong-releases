@@ -49,8 +49,7 @@
                               "target":  [
                                              "nsis",
                                              "portable"
-                                         ],
-                              "icon":  "build/icon.png"
+                                         ]
                           },
                   "nsis":  {
                                "oneClick":  false,
