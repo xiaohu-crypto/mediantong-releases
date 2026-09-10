@@ -39,6 +39,12 @@ declare global {
         Promise<{ ok: boolean; content?: string; error?: string; status?: number; usage?: { total_tokens?: number } }>;
       backupPickDir: () => Promise<string | null>;
       backupWrite: (args: { dir: string; content: string; keep: number }) => Promise<{ ok: boolean; file?: string; removed?: number; error?: string }>;
+      chatStream: (args: { baseUrl: string; apiKey: string; model: string; messages: { role: string; content: string }[] }) => Promise<{ ok: boolean }>;
+      onStreamChunk: (cb: (chunk: string) => void) => void;
+      onStreamDone: (cb: () => void) => void;
+      onStreamError: (cb: (err: string) => void) => void;
+      onUpdateReady: (cb: (version: string) => void) => void;
+      installUpdate: () => void;
     };
   }
 }
@@ -145,6 +151,11 @@ export default function App() {
     };
     window.addEventListener("keydown", onKey);
     if (window.mta) window.mta.onQuickCapture(() => setShowQuick(true));
+    if (window.mta?.onUpdateReady) {
+      window.mta.onUpdateReady((v: string) => {
+        if (confirm("已发现新版本 v" + v + ",立即重启更新?")) window.mta!.installUpdate();
+      });
+    }
     return () => window.removeEventListener("keydown", onKey);
   }, [reload]);
 

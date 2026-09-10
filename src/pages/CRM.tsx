@@ -114,6 +114,7 @@ export default function CRM(props: Props) {
   const [importOpen, setImportOpen] = useState(false);
   const [dense, setDense] = useState(false);
   const [vc, setVc] = useState<Record<string, boolean>>({ industry: true, grade: true, health: true, deal: true, touch: true });
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [savedViews, setSavedViews] = useState<SavedView[]>([]);
   const [viewName, setViewName] = useState("");
   const [savingView, setSavingView] = useState(false);
@@ -269,9 +270,24 @@ export default function CRM(props: Props) {
             ))}
           </div>
         ) : null}
+        {selected.size > 0 ? (
+          <div style={{ padding: "8px 14px", background: "var(--brand-soft, #eef2ff)", borderRadius: 8, marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 13, fontWeight: 600 }}>已选 {selected.size} 个客户</span>
+            <button className="btn danger sm" onClick={() => {
+              if (!confirm("确认删除选中的 " + selected.size + " 个客户?可从回收站恢复。")) return;
+              void (async () => {
+                for (const id of selected) await db.softDelete("customers", id, "批量删除客户");
+                setSelected(new Set());
+                show("已批量删除");
+                await props.reload();
+              })();
+            }}>批量删除</button>
+            <button className="btn ghost sm" onClick={() => setSelected(new Set())}>取消选择</button>
+          </div>
+        ) : null}
         <div className={"tgrid-wrap" + (dense ? " dense" : "")}>
           <table className="tgrid">
-            <thead><tr><th style={{ width: "20%" }}>客户</th>{vc.industry ? <th>行业</th> : null}{vc.grade ? <th>等级</th> : null}{vc.health ? <th>健康度</th> : null}<th>阶段</th>{vc.deal ? <th style={{ textAlign: "right" }}>在途商机</th> : null}{vc.touch ? <th>最近跟进</th> : null}</tr></thead>
+            <thead><tr><th style={{ width: 32 }}><input type="checkbox" checked={selected.size === rows.length && rows.length > 0} onChange={(e) => { if (e.target.checked) setSelected(new Set(rows.map((r) => r.id))); else setSelected(new Set()); }} /></th><th style={{ width: "20%" }}>客户</th>{vc.industry ? <th>行业</th> : null}{vc.grade ? <th>等级</th> : null}{vc.health ? <th>健康度</th> : null}<th>阶段</th>{vc.deal ? <th style={{ textAlign: "right" }}>在途商机</th> : null}{vc.touch ? <th>最近跟进</th> : null}</tr></thead>
             <tbody>
               {rows.map((c) => {
                 const h = healthOf(c.id, props.cps, payments);
@@ -280,6 +296,7 @@ export default function CRM(props: Props) {
                 const cls = h >= 80 ? "good" : h >= 60 ? "mid" : "low";
                 return (
                   <tr key={c.id} onClick={() => { setOpenId(c.id); setTab("概览"); }}>
+                  <td onClick={(e) => e.stopPropagation()}><input type="checkbox" checked={selected.has(c.id)} onChange={() => { const n = new Set(selected); if (n.has(c.id)) n.delete(c.id); else n.add(c.id); setSelected(n); }} /></td>
                     <td><div className="cname"><span className="dot" style={{ background: h >= 80 ? "var(--success)" : h >= 60 ? "var(--warning)" : "var(--danger)" }} />{c.name}</div><div className="cell-sub">{c.industry}</div></td>
                     {vc.industry ? <td>{c.industry}</td> : null}
                     {vc.grade ? <td><Chip kind={c.grade === "A" || c.grade === "S" ? "brand" : "gray"}>{c.grade}</Chip></td> : null}

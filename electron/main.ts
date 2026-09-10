@@ -5,6 +5,7 @@ const authOf = (k: string) => ("Bea" + "rer ") + k;
 import path from "node:path";
 import { readFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
+import { autoUpdater } from "electron-updater";
 
 let win: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -61,6 +62,17 @@ app.whenReady().then(() => {
   Menu.setApplicationMenu(null); // 移除原生 File/Edit/View 白色菜单栏
   createWindow();
 
+  // ===== 自动更新:启动后静默检查,下载完成后提示重启 =====
+  autoUpdater.autoDownload = true;
+  autoUpdater.on("update-available", (info) => {
+    win?.webContents.send("update:available", { version: info.version });
+  });
+  autoUpdater.on("update-downloaded", (info) => {
+    win?.webContents.send("update:ready", { version: info.version });
+  });
+  autoUpdater.on("error", () => { /* 静默:不打扰用户 */ });
+  setTimeout(() => { void autoUpdater.checkForUpdates(); }, 3000);
+
   tray = new Tray(trayIcon());
   tray.setToolTip("媒电通工作台");
   tray.setContextMenu(Menu.buildFromTemplate([
@@ -78,6 +90,7 @@ app.whenReady().then(() => {
     app.setLoginItemSettings({ openAtLogin: open });
     return app.getLoginItemSettings().openAtLogin;
   });
+  ipcMain.handle("update:install", () => { autoUpdater.quitAndInstall(); return true; });
   ipcMain.handle("login-item:get", () => app.getLoginItemSettings().openAtLogin);
   ipcMain.handle("titlebar:set", async (_e, mode: string) => {
     const mv = mode === "native" ? "native" : "integrated";
@@ -115,6 +128,47 @@ app.whenReady().then(() => {
       return { ok: true, content: data.choices?.[0]?.message?.content ?? "", usage: data.usage };
     } catch (e) {
       return { ok: false, error: String(e) };
+    }
+  });
+
+  // ===== AI流式:逐块推给渲染进程 =====
+  ipcMain.handle("ai:chatStream", async (e, args: { baseUrl: string; apiKey: string; model: string; messages: { role: string; content: string }[] }) => {
+    const url = args.baseUrl.replace(/\/+$/, "") + "/chat/completions";
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: authOf(args.apiKey) },
+        body: JSON.stringify({ model: args.model, messages: args.messages, temperature: 0.7, stream: true }),
+      });
+      if (!res.ok || !res.body) {
+        e.sender.send("ai:stream-error", { error: "HTTP " + res.status });
+        return { ok: false };
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const data = line.slice(6).trim();
+          if (data === "[DONE]") continue;
+          try {
+            const j = JSON.parse(data);
+            const delta = j.choices?.[0]?.delta?.content;
+            if (delta) e.sender.send("ai:stream-chunk", { chunk: delta });
+          } catch { /* ignore partial */ }
+        }
+      }
+      e.sender.send("ai:stream-done", {});
+      return { ok: true };
+    } catch (err) {
+      e.sender.send("ai:stream-error", { error: String(err) });
+      return { ok: false };
     }
   });
 });

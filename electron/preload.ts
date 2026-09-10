@@ -14,4 +14,10 @@ contextBridge.exposeInMainWorld("mta", {
   titlebarSet: (mode: string) => ipcRenderer.invoke("titlebar:set", mode) as Promise<{ ok: boolean; restart?: boolean }>,
   backupPickDir: () => ipcRenderer.invoke("backup:pickDir"),
   backupWrite: (args: { dir: string; content: string; keep: number }) => ipcRenderer.invoke("backup:write", args),
+  onUpdateReady: (cb: (v: string) => void) => { ipcRenderer.on("update:ready", (_e, d) => cb(d.version)); },
+  installUpdate: () => ipcRenderer.invoke("update:install"),
+  chatStream: (args) => ipcRenderer.invoke("ai:chatStream", args),
+  onStreamChunk: (cb) => { ipcRenderer.on("ai:stream-chunk", (_e, d) => cb(d.chunk)); },
+  onStreamDone: (cb) => { ipcRenderer.on("ai:stream-done", () => cb()); },
+  onStreamError: (cb) => { ipcRenderer.on("ai:stream-error", (_e, d) => cb(d.error)); },
 });

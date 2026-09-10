@@ -1,60 +1,61 @@
 {
-    "name":  "meidiantong-workbench",
-    "private":  true,
-    "version":  "0.1.0",
-    "description":  "Media Advertising Workbench (Electron + React 18 + TS)",
-    "main":  "dist-electron/main.js",
-    "scripts":  {
-                    "dev":  "vite",
-                    "build":  "tsc --noEmit \u0026\u0026 vite build",
-                    "typecheck":  "tsc --noEmit",
-                    "test":  "vitest run",
-                    "e2e":  "tsc -p tsconfig.electron.json \u0026\u0026 playwright test",
-                    "electron:dev":  "vite build \u0026\u0026 tsc -p electron \u0026\u0026 electron .",
-                    "electron:main":  "tsc -p tsconfig.electron.json",
-                    "dist":  "npm run build \u0026\u0026 npm run electron:main \u0026\u0026 electron-builder --win"
-                },
-    "dependencies":  {
-                         "idb":  "^8.0.0",
-                         "minisearch":  "^7.2.0",
-                         "react":  "^18.3.1",
-                         "react-dom":  "^18.3.1",
-                         "xlsx":  "^0.18.5"
-                     },
-    "devDependencies":  {
-                            "@playwright/test":  "^1.63.0",
-                            "@types/react":  "^18.3.5",
-                            "@types/react-dom":  "^18.3.0",
-                            "@vitejs/plugin-react":  "^4.3.1",
-                            "electron":  "^33.0.0",
-                            "electron-builder":  "^25.1.8",
-                            "fake-indexeddb":  "6.2.5",
-                            "typescript":  "^5.6.2",
-                            "vite":  "^5.4.8",
-                            "vitest":  "^2.1.1"
-                        },
-    "build":  {
-                  "appId":  "com.xiaohucrypto.mediantong",
-                  "productName":  "媒电通工作台",
-                  "directories":  {
-                                      "output":  "release"
-                                  },
-                  "files":  [
-                                "dist/**",
-                                "dist-electron/**",
-                                "package.json"
-                            ],
-                  "asar":  true,
-                  "win":  {
-                              "target":  [
-                                             "nsis",
-                                             "portable"
-                                         ]
-                          },
-                  "nsis":  {
-                               "oneClick":  false,
-                               "allowToChangeInstallationDirectory":  true,
-                               "createDesktopShortcut":  true
-                           }
-              }
+    "name": "meidiantong-workbench",
+    "private": true,
+    "version": "0.1.0",
+    "description": "Media Advertising Workbench (Electron + React 18 + TS)",
+    "main": "dist-electron/main.js",
+    "scripts": {
+        "dev": "vite",
+        "build": "tsc --noEmit && vite build",
+        "typecheck": "tsc --noEmit",
+        "test": "vitest run",
+        "e2e": "tsc -p tsconfig.electron.json && playwright test",
+        "electron:dev": "vite build && tsc -p electron && electron .",
+        "electron:main": "tsc -p tsconfig.electron.json",
+        "dist": "npm run build && npm run electron:main && electron-builder --win"
+    },
+    "dependencies": {
+        "idb": "^8.0.0",
+        "minisearch": "^7.2.0",
+        "react": "^18.3.1",
+        "react-dom": "^18.3.1",
+        "xlsx": "^0.18.5"
+    },
+    "devDependencies": {
+        "@playwright/test": "^1.63.0",
+        "@types/react": "^18.3.5",
+        "@types/react-dom": "^18.3.0",
+        "@vitejs/plugin-react": "^4.3.1",
+        "electron": "^33.0.0",
+        "electron-builder": "^25.1.8",
+        "electron-updater": "^6.8.9",
+        "fake-indexeddb": "6.2.5",
+        "typescript": "^5.6.2",
+        "vite": "^5.4.8",
+        "vitest": "^2.1.1"
+    },
+    "build": {
+        "appId": "com.xiaohucrypto.mediantong",
+        "productName": "媒电通工作台",
+        "directories": {
+            "output": "release"
+        },
+        "files": [
+            "dist/**",
+            "dist-electron/**",
+            "package.json"
+        ],
+        "asar": true,
+        "win": {
+            "target": [
+                "nsis",
+                "portable"
+            ]
+        },
+        "nsis": {
+            "oneClick": false,
+            "allowToChangeInstallationDirectory": true,
+            "createDesktopShortcut": true
+        }
+    }
 }
