@@ -16,7 +16,6 @@ interface Props {
 }
 
 export default function Today(props: Props) {
-  void props.reload;
   const { show, node } = useToast();
   const [done, setDone] = useState<Record<string, boolean>>({});
   const [gen, setGen] = useState<Record<string, { busy?: boolean; text?: string; badge?: "云" | "本地"; reason?: string; error?: string }>>({});

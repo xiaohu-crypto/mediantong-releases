@@ -1,9 +1,10 @@
 import { useRef } from "react";
 import { db } from "../db/db";
 import { seedIfEmpty } from "../data/seed";
-import { Btn, Modal } from "../ui/common";
+import { Btn, Modal, useToast } from "../ui/common";
 
 export default function Onboarding(props: { onDone: () => Promise<void> }) {
+  const { show, node } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function pickSample() { await seedIfEmpty(); await db.setSetting("onboarded", true); await props.onDone(); }
@@ -29,13 +30,14 @@ export default function Onboarding(props: { onDone: () => Promise<void> }) {
           void (async () => {
             try {
               const parsed = JSON.parse(await f.text()) as { stores?: Record<string, unknown[]> };
-              if (!parsed.stores) { window.alert("文件格式不正确"); return; }
+              if (!parsed.stores) { show("文件格式不正确"); return; }
               await db.restoreAll(parsed.stores);
               await db.setSetting("onboarded", true);
               await props.onDone();
-            } catch { window.alert("导入失败:无法解析该文件"); }
+            } catch { show("导入失败:无法解析该文件"); }
           })();
         }} />
+      {node}
     </Modal>
   );
 }

@@ -78,6 +78,8 @@ export default function CRM(props: Props) {
   /* 客户级媒介策略(存于 customer.custom.mediaStrategy) */
   const [strategyEdit, setStrategyEdit] = useState(false);
   const [strategyDraft, setStrategyDraft] = useState({ audience: "", budget: "", mix: "", resources: "", note: "" });
+  const [cpOpen, setCpOpen] = useState(false);
+  const [cpForm, setCpForm] = useState<{ channel: ContactPoint["channel"]; summary: string }>({ channel: "微信", summary: "" });
   function openStrategyEdit() {
     if (!drawerC) return;
     const s = ((drawerC.custom ?? {}) as Record<string, Record<string, string>>).mediaStrategy ?? {};
@@ -89,6 +91,15 @@ export default function CRM(props: Props) {
     await db.put("customers", { ...drawerC, custom: { ...(drawerC.custom ?? {}), mediaStrategy: strategyDraft } }, "保存客户「" + drawerC.name + "」媒介策略");
     setStrategyEdit(false);
     show("客户媒介策略已保存");
+    await props.reload();
+  }
+  /* 快速记录接触点(ContactPoint):写库后随 360° 时间线/健康度/通知同步刷新 */
+  async function saveContactPoint() {
+    if (!drawerC) return;
+    if (!cpForm.summary.trim()) { show("跟进内容必填"); return; }
+    await db.put("contactPoints", { id: uid("cp"), customerId: drawerC.id, channel: cpForm.channel, time: Date.now(), summary: cpForm.summary.trim() }, "记录跟进「" + drawerC.name + "」");
+    show("跟进已记录");
+    setCpOpen(false); setCpForm({ channel: "微信", summary: "" });
     await props.reload();
   }
   const [aiBusy, setAiBusy] = useState(false);
@@ -271,14 +282,17 @@ export default function CRM(props: Props) {
           </div>
         ) : null}
         {selected.size > 0 ? (
-          <div style={{ padding: "8px 14px", background: "var(--brand-soft, #eef2ff)", borderRadius: 8, marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ padding: "8px 14px", background: "var(--brand-soft)", borderRadius: 8, marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ fontSize: 13, fontWeight: 600 }}>已选 {selected.size} 个客户</span>
             <button className="btn danger sm" onClick={() => {
-              if (!confirm("确认删除选中的 " + selected.size + " 个客户?可从回收站恢复。")) return;
               void (async () => {
-                for (const id of selected) await db.softDelete("customers", id, "批量删除客户");
+                const victims = customers.filter((c) => selected.has(c.id));
+                for (const c of victims) await db.softDelete("customers", c.id, "批量删除客户");
                 setSelected(new Set());
-                show("已批量删除");
+                show("已批量删除 " + victims.length + " 个客户", () => { void (async () => {
+                  for (const c of victims) await db.put("customers", { ...c, deletedAt: undefined }, "撤销批量删除");
+                  await props.reload();
+                })(); });
                 await props.reload();
               })();
             }}>批量删除</button>
@@ -375,7 +389,7 @@ export default function CRM(props: Props) {
                 <div style={{ paddingTop: 10 }}>
                   {timeline.map((it, i) => (
                     <div className="tl-item" key={i}>
-                      <span className="tl-dot" style={{ background: it.kind === "接触" ? CH["微信"] : it.kind === "任务" ? "#f59e0b" : it.kind === "商机" ? "var(--brand)" : "var(--data)" }} />
+                      <span className="tl-dot" style={{ background: it.kind === "接触" ? CH["微信"] : it.kind === "任务" ? "var(--warning)" : it.kind === "商机" ? "var(--brand)" : "var(--data)" }} />
                       <div>
                         <div className="tl-title"><span className="chip gray" style={{ fontSize: 10, padding: "0 6px", marginRight: 6 }}>{it.kind}</span>{it.title}</div>
                         <div className="tl-time">{new Date(it.ts).toLocaleString("zh-CN")}</div>
@@ -412,9 +426,17 @@ export default function CRM(props: Props) {
               {tab === "媒介策略" && drawerC ? (
                 <MediaStrategyView customer={drawerC} onEdit={openStrategyEdit} />
               ) : null}
+              {tab === "AI建议" && (
+                <div style={{ padding: 8 }}>
+                  <Btn kind="primary" onClick={() => { void genAdvice(); }} disabled={aiBusy}>
+                    {aiBusy ? "思考中…" : "生成跟进建议"}
+                  </Btn>
+                  {aiAdvice ? <pre style={{ whiteSpace: "pre-wrap", marginTop: 12, fontSize: 13, lineHeight: 1.7, background: "var(--surface-2)", padding: 12, borderRadius: 8 }}>{aiAdvice}</pre> : null}
+                </div>
+              )}
             </div>
             <div className="drawer-foot">
-              <Btn kind="primary" onClick={() => show("演示:接触点快速记录属 P1 管线")}>记录跟进</Btn>
+              <Btn kind="primary" onClick={() => setCpOpen(true)}>记录跟进</Btn>
               <Btn kind="ghost" onClick={() => { void (async () => { await tryDelete(drawerC); })(); }}>删除</Btn>
               <Btn kind="ghost" onClick={exportCustomerPack}>导出客户包</Btn>
             </div>
@@ -462,14 +484,18 @@ export default function CRM(props: Props) {
           <Field label="备注"><textarea className="inp" rows={2} style={{ width: "100%" }} value={strategyDraft.note} onChange={(e) => setStrategyDraft({ ...strategyDraft, note: e.target.value })} /></Field>
         </Modal>
       ) : null}
-              {tab === "AI建议" && drawerC ? (
-                <div style={{ padding: 8 }}>
-                  <Btn kind="primary" onClick={() => { void genAdvice(); }} disabled={aiBusy}>
-                    {aiBusy ? "思考中…" : "生成跟进建议"}
-                  </Btn>
-                  {aiAdvice ? <pre style={{ whiteSpace: "pre-wrap", marginTop: 12, fontSize: 13, lineHeight: 1.7, background: "var(--surface-2)", padding: 12, borderRadius: 8 }}>{aiAdvice}</pre> : null}
-                </div>
-              ) : null}
+      {cpOpen && drawerC ? (
+        <Modal title={"记录跟进 · " + drawerC.name} onClose={() => setCpOpen(false)} footer={
+          <div className="grow"><Btn kind="ghost" onClick={() => setCpOpen(false)}>取消</Btn><Btn kind="primary" onClick={() => { void saveContactPoint(); }}>保存</Btn></div>
+        }>
+          <Field label="渠道">
+            <select className="sel" style={{ width: "100%" }} value={cpForm.channel} onChange={(e) => setCpForm({ ...cpForm, channel: e.target.value as ContactPoint["channel"] })}>
+              {(["微信", "拜访", "电话", "邮件"] as const).map((c) => <option key={c}>{c}</option>)}
+            </select>
+          </Field>
+          <Field label="内容"><textarea className="inp" rows={3} style={{ width: "100%" }} value={cpForm.summary} onChange={(e) => setCpForm({ ...cpForm, summary: e.target.value })} placeholder="本次沟通要点…" /></Field>
+        </Modal>
+      ) : null}
       {node}
     </div>
   );

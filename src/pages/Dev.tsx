@@ -7,6 +7,10 @@ import { IconPlus } from "../components/icons";
 
 const STAGES: DealStage[] = ["线索", "MQL", "SQL", "商机", "报价", "谈判", "签约", "输单", "流失"];
 const PROB: Record<DealStage, number> = { 线索: 0.05, MQL: 0.1, SQL: 0.25, 商机: 0.4, 报价: 0.6, 谈判: 0.75, 签约: 1, 输单: 0, 流失: 0 };
+/** 自定义阶段概率兜底:未命中 PROB 的自定义阶段按中漏斗 40% 计,保证加权金额/百分比展示不为 NaN */
+function probOf(stage: string): number {
+  return PROB[stage as DealStage] ?? 0.4;
+}
 const MEDDIC = ["Metrics 指标", "Economic buyer 经济决策人", "Decision criteria 决策标准", "Decision process 决策流程", "Identify pain 痛点确认", "Champion 支持者"];
 const BANT = ["Budget 预算", "Authority 决策权", "Need 需求", "Timeline 时间"];
 
@@ -36,6 +40,14 @@ export default function Dev(props: Props) {
   const active = deals.filter((d) => !["输单", "流失"].includes(d.stage));
   const weightedTotal = active.reduce((s, d) => s + weightedValue(d), 0);
 
+  /* Pipeline 列:默认在途 7 阶段 + 设置(customStages)/数据中实际存在的自定义阶段(去重保序,追加在后;输单/流失为终态不进列) */
+  const colStages = (() => {
+    const base = STAGES.slice(0, 7);
+    const customs = [...extraStages, ...deals.map((d) => d.stage)]
+      .filter((s) => !base.includes(s as DealStage) && s !== "输单" && s !== "流失");
+    return [...base, ...Array.from(new Set(customs))];
+  })();
+
   const pitches = props.pitches.filter((p) => !p.deletedAt);
   const decided = pitches.filter((p) => p.result !== "待定");
   const winRate = decided.length ? Math.round((decided.filter((p) => p.result === "胜").length / decided.length) * 100) : null;
@@ -60,7 +72,7 @@ export default function Dev(props: Props) {
   }
 
   async function setStage(d: Deal, stage: DealStage) {
-    await db.put("deals", { ...d, stage, probability: PROB[stage] }, `商机「${d.title}」阶段改为 ${stage}`);
+    await db.put("deals", { ...d, stage, probability: probOf(stage) }, `商机「${d.title}」阶段改为 ${stage}`);
     await props.reload();
   }
 
@@ -92,8 +104,8 @@ export default function Dev(props: Props) {
       </div>
 
       <div className="h-row"><span className="h-title">Pipeline(按阶段)</span><Chip kind="data">点击卡片评估</Chip></div>
-      <div className="kanban" style={{ gridTemplateColumns: "repeat(7,1fr)", marginBottom: 16 }}>
-        {STAGES.slice(0, 7).map((stage) => {
+      <div className="kanban" style={{ gridTemplateColumns: "repeat(" + colStages.length + ",1fr)", marginBottom: 16 }}>
+        {colStages.map((stage) => {
           const col = deals.filter((d) => d.stage === stage);
           return (
             <div className="kcol" key={stage} style={{ minHeight: 200 }}>
@@ -105,7 +117,7 @@ export default function Dev(props: Props) {
                     <div className="t" style={{ fontSize: "var(--text-xs)" }}>{nameOf(d.customerId)}</div>
                     <div className="cell-sub">{d.title}</div>
                     <div className="m"><span className="num" style={{ fontWeight: 650 }}>{money(d.value)}</span>
-                      <span className="chip data" style={{ fontSize: 10, padding: "0 6px" }}>{Math.round(d.probability * 100)}%</span></div>
+                      <span className="chip data" style={{ fontSize: 10, padding: "0 6px" }}>{Math.round((d.probability ?? probOf(d.stage)) * 100)}%</span></div>
                   </div>
                 ))}
                 {col.length === 0 ? <p className="muted" style={{ fontSize: "var(--text-xs)", textAlign: "center" }}>—</p> : null}
@@ -121,7 +133,7 @@ export default function Dev(props: Props) {
             <span className="h-title sm">{nameOf(sel.customerId)} · {sel.title}</span>
             <Btn kind="ghost" sm style={{ marginLeft: "auto" }} onClick={() => openDealEdit(sel)}>编辑商机</Btn>
             <select className="sel" style={{ marginLeft: "auto" }} value={sel.stage} onChange={(e) => { void setStage(sel, e.target.value as DealStage); }}>
-              {[...STAGES, ...extraStages.filter((s) => !STAGES.includes(s as DealStage))].map((s) => <option key={s} value={s}>{s}{PROB[s as DealStage] !== undefined ? "(" + Math.round(PROB[s as DealStage] * 100) + "%)" : ""}</option>)}
+              {[...STAGES, ...extraStages.filter((s) => !STAGES.includes(s as DealStage))].map((s) => <option key={s} value={s}>{s}({Math.round(probOf(s) * 100)}%)</option>)}
             </select>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>

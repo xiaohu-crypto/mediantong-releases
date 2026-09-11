@@ -36,12 +36,10 @@ export default function QuickCapture(props: { open: boolean; onClose: () => void
 
   /* 微信粘贴解析:每行 "张三 13800138001 备注" → 联系人候选(按手机号查重) */
   const wxCandidates: WxCandidate[] = (() => {
-    const seen = new Set(props.customers.map(() => ""));
     const phoneSet = new Set<string>();
     return wxText.trim().split(/\r?\n/).filter(Boolean).map((line) => {
       const phone = (line.match(/1[3-9]\d{9}/) ?? [""])[0];
       const name = (line.replace(/1[3-9]\d{9}/, "").trim().split(/\s+/)[0] ?? "").slice(0, 12);
-      void seen;
       return { name, phone, dup: phone !== "" && phoneSet.has(phone) };
     }).filter((c) => c.name || c.phone);
   })();

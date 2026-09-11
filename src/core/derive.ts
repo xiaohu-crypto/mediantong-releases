@@ -18,3 +18,17 @@ export function latestTouch(customerId: string, cps: ContactPoint[]): number | n
   const times = cps.filter((p) => p.customerId === customerId && !p.deletedAt).map((p) => p.time);
   return times.length ? Math.max(...times) : null;
 }
+
+/** 逾期回款通知"发生时间":优先应收到期日(dueDate),缺省退到实收日(paidDate)/记录写入时间(updatedAt) */
+export function payNotifyAt(p: Payment): number {
+  const due = p.dueDate ? new Date(p.dueDate).getTime() : NaN;
+  if (Number.isFinite(due)) return due;
+  const paid = p.paidDate ? new Date(p.paidDate).getTime() : NaN;
+  if (Number.isFinite(paid)) return paid;
+  return (p as { updatedAt?: number }).updatedAt ?? 0;
+}
+
+/** 14 天无接触客户通知"发生时间":最近接触时间 + 沉默阈值天数 */
+export function staleNotifyAt(lastTouchAt: number, staleDays = 14): number {
+  return lastTouchAt + staleDays * 86400000;
+}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { db } from "../db/db";
 import type { Note } from "../types";
 import { Btn, Chip, Field, uid, useToast } from "../ui/common";
@@ -25,10 +25,40 @@ export default function Kb(props: Props) {
     if (props.focusId) { setSelId(props.focusId); setDraft(null); }
   }, [props.focusId]);
 
+  const [draftDirty, setDraftDirty] = useState(false);
+  /* 记录最近一次编辑,供切换笔记时立即落盘 */
+  const draftRef = useRef<{ id: string; draft: { title: string; content: string; tags: string; para: Note["para"] } } | null>(null);
   useEffect(() => {
-    if (sel) setDraft({ title: sel.title, content: sel.content, tags: sel.tags.join(", "), para: sel.para });
-    else setDraft(null);
+    draftRef.current = selId && draft ? { id: selId, draft } : null;
+  }, [draft, selId]);
+
+  /* 切换笔记:先落盘上一笔记未保存草稿,再载入新笔记(有草稿优先恢复) */
+  useEffect(() => {
+    if (draftRef.current && draftRef.current.id !== selId) {
+      void db.setSetting("kbDraft:" + draftRef.current.id, draftRef.current.draft);
+    }
+    const n = notes.find((x) => x.id === selId) ?? null;
+    if (!n) { setDraft(null); setDraftDirty(false); return; }
+    setDraft({ title: n.title, content: n.content, tags: n.tags.join(", "), para: n.para });
+    setDraftDirty(false);
+    let alive = true;
+    void (async () => {
+      const saved = await db.getSetting<{ title: string; content: string; tags: string; para: Note["para"] } | null>("kbDraft:" + n.id, null);
+      if (alive && saved) { setDraft(saved); setDraftDirty(false); }
+    })();
+    return () => { alive = false; };
   }, [selId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* 草稿自动保存:内容变更 800ms 后写入 settings,防切换/关闭丢失 */
+  useEffect(() => {
+    if (!selId || !draft) return;
+    setDraftDirty(true);
+    const t = window.setTimeout(() => {
+      void db.setSetting("kbDraft:" + selId, draft);
+      setDraftDirty(false);
+    }, 800);
+    return () => window.clearTimeout(t);
+  }, [draft, selId]);
 
   const backlinks = useMemo(() => {
     if (!sel) return [];
@@ -168,6 +198,7 @@ async function askAi() {
               <div className="h-row" style={{ marginBottom: 8 }}>
                 <input className="inp" style={{ flex: 1, fontWeight: 650, fontSize: "var(--text-lg)" }} value={draft.title}
                   onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
+                <span className="cell-sub" style={{ marginRight: 4 }}>{draftDirty ? "编辑中…" : "已自动保存"}</span>
                 <Btn kind="primary" onClick={() => { void save(); }}>保存</Btn>
                 <Btn kind="done" onClick={() => { void remove(); }}>删除</Btn>
               </div>

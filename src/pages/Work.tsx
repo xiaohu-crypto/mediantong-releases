@@ -260,7 +260,7 @@ function CalendarView(props: { tasks: Task[]; customers: Customer[]; onOpen: (t:
           <div key={i} style={{ minHeight: 70, border: "1px solid var(--border-soft)", borderRadius: 6, padding: 4, background: d === now.getDate() ? "var(--brand-soft)" : "transparent" }}>
             {d !== null ? <div style={{ fontSize: 11, fontWeight: 600 }}>{d}</div> : null}
             {d !== null ? (tasksByDay.get(fmt(d)) ?? []).map((t) => (
-              <div key={t.id} onClick={() => props.onOpen(t)} style={{ fontSize: 10, padding: "2px 4px", margin: "2px 0", borderRadius: 3, background: t.priority === "高" ? "#fef2f2" : "var(--surface-2)", cursor: "pointer", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</div>
+              <div key={t.id} onClick={() => props.onOpen(t)} style={{ fontSize: 10, padding: "2px 4px", margin: "2px 0", borderRadius: 3, background: t.priority === "高" ? "var(--danger-bg)" : "var(--surface-2)", cursor: "pointer", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</div>
             )) : null}
           </div>
         ))}

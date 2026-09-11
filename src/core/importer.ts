@@ -46,3 +46,28 @@ export function parseRows(rows: ImportRow[], existingNames: string[]): { ok: Imp
   }
   return { ok, fails };
 }
+
+/** 统一 CSV 解析:支持双引号包裹字段(字段内可含逗号/换行,双引号转义为 ""),返回去空行二维数组 */
+export function parseCsv(text: string): string[][] {
+  const out: string[][] = [];
+  let row: string[] = [];
+  let cur = "";
+  let inQ = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQ) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') { cur += '"'; i++; }
+        else inQ = false;
+      } else cur += ch;
+    } else if (ch === '"') inQ = true;
+    else if (ch === ",") { row.push(cur.trim()); cur = ""; }
+    else if (ch === "\n" || ch === "\r") {
+      if (ch === "\r" && text[i + 1] === "\n") i++;
+      row.push(cur.trim()); out.push(row); row = []; cur = "";
+    }
+    else cur += ch;
+  }
+  if (cur !== "" || row.length) { row.push(cur.trim()); out.push(row); }
+  return out.filter((r) => r.some((c) => c !== ""));
+}

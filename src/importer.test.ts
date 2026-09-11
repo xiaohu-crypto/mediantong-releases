@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { columnMatch, parseRows, type ImportRow } from "../src/core/importer";
+import { columnMatch, parseCsv, parseRows, type ImportRow } from "../src/core/importer";
 
 describe("导入管线", () => {
   it("列名同义词匹配", () => {
@@ -28,5 +28,13 @@ describe("导入管线", () => {
     const cost = Date.now() - t0;
     expect(r.ok.length).toBe(1000);
     expect(cost).toBeLessThan(5000);
+  });
+  it("统一 CSV 解析:引号包裹逗号/换行与双引号转义", () => {
+    const rows = parseCsv('名称,行业\n"客户,A公司","互联网"\n"引号""内""引号",1');
+    expect(rows[0]).toEqual(["名称", "行业"]);
+    expect(rows[1]).toEqual(["客户,A公司", "互联网"]);
+    expect(rows[2]).toEqual(["引号\"内\"引号", "1"]);
+    expect(parseCsv("a,b\r\nc,d\r\n")).toEqual([["a", "b"], ["c", "d"]]);
+    expect(parseCsv("a,\n\nb,c")).toEqual([["a", ""], ["b", "c"]]);
   });
 });

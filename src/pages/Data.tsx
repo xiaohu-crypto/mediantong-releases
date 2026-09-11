@@ -43,7 +43,9 @@ export default function Data(props: Props) {
   const monthVal = (m: string): number => {
     if (metric === "签约额") return contracts.filter((c) => c.signDate.startsWith(m)).reduce((s, c) => s + c.amount, 0);
     if (metric === "回款") return payments.filter((p) => p.paidDate?.startsWith(m)).reduce((s, p) => s + p.amount, 0);
-    return contracts.filter((c) => c.signDate.startsWith(m)).reduce((s, c) => s + (c.amount - mediaCost / Math.max(contracts.length, 1)), 0);
+    /* 毛利口径:月度毛利 = 本月签约额 − 本月分摊媒体成本;媒体成本按全部合同数均摊,每月合同减同一分摊值(与需求文档 2.3 一致) */
+    const total = contracts.length || 1;
+    return contracts.filter((c) => c.signDate.startsWith(m)).reduce((s, c) => s + (c.amount - mediaCost / total), 0);
   };
   const vals = months.map(monthVal);
   const maxV = Math.max(...vals, 1);

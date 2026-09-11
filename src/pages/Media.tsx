@@ -3,6 +3,7 @@ import { db } from "../db/db";
 import type { Customer, Influencer, MediaResource, PostBuy, PricePoint, RateCard, ScheduleItem, Supplier } from "../types";
 import { Btn, Chip, Field, Modal, money, uid, useToast } from "../ui/common";
 import { IconPlus } from "../components/icons";
+import { parseCsv } from "../core/importer";
 
 interface Props {
   suppliers: Supplier[]; resources: MediaResource[]; ratecards: RateCard[];
@@ -213,10 +214,9 @@ export default function Media(props: Props) {
     URL.revokeObjectURL(a.href); show("已导出");
   }
   async function importCsv() {
-    const lines = csv.trim().split(/\r?\n/).filter(Boolean);
+    const rows = parseCsv(csv);
     let n = 0;
-    for (const line of lines) {
-      const cols = line.split(",").map((s) => s.trim());
+    for (const cols of rows) {
       if (cols.length < 5) continue;
       const [resourceName, month, imp, cpm, roi] = cols;
       const res = resources.find((r) => r.name === resourceName);
@@ -244,11 +244,11 @@ export default function Media(props: Props) {
     URL.revokeObjectURL(a.href); show("CSV 已导出");
   }
   async function importMediaCsv(text: string) {
-    const lines = text.replace(/^\uFEFF/, "").split(/\r?\n/).filter(Boolean);
-    if (lines.length < 2) { show("无数据"); return; }
+    const rows = parseCsv(text.replace(/^\uFEFF/, ""));
+    if (rows.length < 2) { show("无数据"); return; }
     let resN = 0, ptN = 0;
-    for (let i = 1; i < lines.length; i++) {
-      const cols = lines[i].match(/("([^"]|"")*"|[^,]*)/g)?.map((s) => s.replace(/^"|"$/g, "").replace(/""/g, '"').trim()) ?? [];
+    for (let i = 1; i < rows.length; i++) {
+      const cols = rows[i];
       if (cols.length < 6) continue;
       const [name, type, suName_, intro, advantage, cases, pName, city, form, size, qty, footfall, price, pStatus] = cols;
       if (!name) continue;

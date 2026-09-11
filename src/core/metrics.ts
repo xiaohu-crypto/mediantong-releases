@@ -26,7 +26,8 @@ export interface DealLike {
 }
 
 export function weightedValue(d: DealLike): number {
-  return Math.round(d.value * d.probability);
+  // 概率兜底:自定义阶段历史数据可能缺 probability,按中漏斗 40% 计,避免加权金额为 NaN
+  return Math.round(d.value * (d.probability ?? 0.4));
 }
 
 export function funnel(deals: DealLike[]): Record<string, { count: number; value: number }> {

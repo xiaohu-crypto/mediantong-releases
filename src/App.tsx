@@ -3,6 +3,7 @@ import { db } from "./db/db";
 import { seedIfEmpty } from "./data/seed";
 import { seedExtraIfEmpty } from "./data/seed2";
 import { rebuildIndex, type SearchDoc } from "./core/search";
+import { payNotifyAt, staleNotifyAt } from "./core/derive";
 import type { Aar, Baseline, Contact, ContactPoint, Contract, Customer, Deal, Influencer, Milestone, MediaResource, Note, Objective, Payment, Pitch, PostBuy, RateCard, Rel, ScheduleItem, Supplier, Task } from "./types";
 import { lazy, Suspense } from "react";
 const Today = lazy(() => import("./pages/Today"));
@@ -20,6 +21,7 @@ const Notifications = lazy(() => import("./pages/Notifications"));
 import QuickCapture from "./components/QuickCapture";
 import TopSearch from "./components/TopSearch";
 import Onboarding from "./components/Onboarding";
+import { Btn, Modal } from "./ui/common";
 import {
   IconHome, IconPlus, IconUsers, IconTask, IconKb, IconFunnel, IconToday, IconFlag,
   IconMedia, IconChart, IconGrowth, IconSettings, IconMoon, IconSun,
@@ -58,6 +60,7 @@ interface DataSet {
   ratecards: RateCard[]; items: ScheduleItem[]; postbuys: PostBuy[];
   notes: Note[]; baselines: Baseline[]; aars: Aar[]; influencers: Influencer[];
   customFields: { id: string; entity: string; key: string; label: string; type: string; options?: string[] }[];
+  notificationsReadAt: number;
 }
 
 type View = "today" | "crm" | "work" | "dev" | "media" | "kb" | "data" | "growth" | "settings" | "help" | "notifications";
@@ -100,6 +103,7 @@ async function loadAll(): Promise<DataSet> {
     aars: await alive<Aar>("aars"),
     influencers: await alive<Influencer>("influencers"),
     customFields: await db.getSetting("customFields", [] as { id: string; entity: string; key: string; label: string; type: string; options?: string[] }[]),
+    notificationsReadAt: await db.getSetting<number>("notificationsReadAt", 0),
   };
 }
 
@@ -111,16 +115,17 @@ export default function App() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [focusCid, setFocusCid] = useState<string | null>(null);
   const [kbFocus, setKbFocus] = useState<string | null>(null);
+  const [updateVer, setUpdateVer] = useState<string | null>(null);
 
   const reload = useCallback(async () => { setData(await loadAll()); }, []);
 
   // 未读通知数:逾期回款 + 14天无接触客户
   const unreadCount = data ? (
-    data.payments.filter((p) => p.status === "逾期" && !p.deletedAt).length +
+    data.payments.filter((p) => p.status === "逾期" && !p.deletedAt && payNotifyAt(p) > data.notificationsReadAt).length +
     data.customers.filter((c) => {
       if (c.deletedAt) return false;
       const last = data.cps.filter((cp) => cp.customerId === c.id && !cp.deletedAt).sort((a, b) => b.time - a.time)[0];
-      return !!last && Date.now() - last.time > 14 * 86400000;
+      return !!last && Date.now() - last.time > 14 * 86400000 && staleNotifyAt(last.time) > data.notificationsReadAt;
     }).length
   ) : 0;
 
@@ -154,9 +159,7 @@ export default function App() {
     window.addEventListener("keydown", onKey);
     if (window.mta) window.mta.onQuickCapture(() => setShowQuick(true));
     if (window.mta?.onUpdateReady) {
-      window.mta.onUpdateReady((v: string) => {
-        if (confirm("已发现新版本 v" + v + ",立即重启更新?")) window.mta!.installUpdate();
-      });
+      window.mta.onUpdateReady((v: string) => { setUpdateVer(v); });
     }
     return () => window.removeEventListener("keydown", onKey);
   }, [reload]);
@@ -307,7 +310,7 @@ export default function App() {
             <Growth tasks={data.tasks} payments={data.payments} pitches={data.pitches} cps={data.cps} contracts={data.contracts} reload={reload} />
           ) : null}
           {view === "notifications" && data ? (
-            <Notifications customers={data.customers} payments={data.payments} cps={data.cps} goCrm={goCrm} reload={reload} />
+            <Notifications customers={data.customers} payments={data.payments} cps={data.cps} goCrm={goCrm} reload={reload} notificationsReadAt={data.notificationsReadAt} />
           ) : null}
           </Suspense>
       {view === "help" ? <Help /> : null}
@@ -322,6 +325,12 @@ export default function App() {
       <QuickCapture open={showQuick} onClose={() => setShowQuick(false)} reload={reload} customers={data?.customers ?? []} />
       {showOnboard ? (
         <Onboarding onDone={async () => { setShowOnboard(false); await seedIfEmpty(); await seedExtraIfEmpty(); await reload(); }} />
+      ) : null}
+      {updateVer !== null ? (
+        <Modal title="发现新版本" onClose={() => setUpdateVer(null)}
+          footer={<><Btn kind="ghost" sm onClick={() => setUpdateVer(null)}>稍后再说</Btn><Btn kind="primary" sm onClick={() => { setUpdateVer(null); window.mta?.installUpdate(); }}>立即重启更新</Btn></>}>
+          <p>已发现新版本 v{updateVer}，重启后将自动完成更新。</p>
+        </Modal>
       ) : null}
     </div>
   );

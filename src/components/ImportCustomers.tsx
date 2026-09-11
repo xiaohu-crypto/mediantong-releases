@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { db } from "../db/db";
-import { columnMatch, parseRows, type ImportRow } from "../core/importer";
-import { uid, Btn } from "../ui/common";
+import { columnMatch, parseCsv, parseRows, type ImportRow } from "../core/importer";
+import { uid, Btn, useToast } from "../ui/common";
 
 interface Props { open: boolean; onClose: () => void; existingNames: string[]; reload: () => Promise<void> }
 
@@ -13,7 +13,7 @@ export default function ImportCustomers(props: Props) {
   const [headers, setHeaders] = useState<string[]>([]);
   const [rows, setRows] = useState<ImportRow[]>([]);
   const [result, setResult] = useState<{ ok: number; fail: number; ids: string[]; fails: { row: number; name: string; errors: Record<string, string> }[] } | null>(null);
-  const { show } = { show: (m: string) => window.setTimeout(() => window.alert(m), 10) };
+  const { show, node } = useToast();
 
   if (!props.open) return null;
 
@@ -23,7 +23,7 @@ export default function ImportCustomers(props: Props) {
     let aoa: unknown[][];
     if (lower.endsWith(".csv")) {
       const text = await f.text();
-      aoa = text.split(/\r?\n/).filter((l) => l.trim() !== "").map((line) => line.split(",").map((v) => v.trim().replace(/^"(.*)"$/, "$1")));
+      aoa = parseCsv(text);
     } else {
       const XLSX = await import("xlsx");
       const buf = await f.arrayBuffer();
@@ -31,10 +31,10 @@ export default function ImportCustomers(props: Props) {
       const ws = wb.Sheets[wb.SheetNames[0]];
       aoa = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, defval: "" });
     }
-    if (aoa.length < 2) { window.alert("表格为空或只有表头"); return; }
+    if (aoa.length < 2) { show("表格为空或只有表头"); return; }
     const hs = (aoa[0] as unknown[]).map((x) => String(x));
     const m = columnMatch(hs);
-    if (m.name === undefined) { window.alert("未识别到「客户名称/名称/公司」列,请检查表头"); return; }
+    if (m.name === undefined) { show("未识别到「客户名称/名称/公司」列,请检查表头"); return; }
     const body = aoa.slice(1) as unknown[][];
     const parsed: ImportRow[] = body.map((r, i) => ({
       row: i + 2,
@@ -136,6 +136,7 @@ export default function ImportCustomers(props: Props) {
             </>
           )}
         </div>
+        {node}
       </div>
     </div>
   );

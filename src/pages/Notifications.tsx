@@ -1,21 +1,22 @@
 import { db } from "../db/db";
 import type { ContactPoint, Customer, Payment } from "../types";
+import { payNotifyAt, staleNotifyAt } from "../core/derive";
 import { Btn, Chip, money, useToast } from "../ui/common";
 
 interface Props {
   customers: Customer[]; payments: Payment[]; cps: ContactPoint[];
-  goCrm: (id: string) => void; reload: () => Promise<void>;
+  goCrm: (id: string) => void; reload: () => Promise<void>; notificationsReadAt: number;
 }
 
 export default function Notifications(props: Props) {
-  const { show } = useToast();
+  const { show, node } = useToast();
 
-  const overduePays = props.payments.filter((p) => p.status === "逾期" && !p.deletedAt);
+  const overduePays = props.payments.filter((p) => p.status === "逾期" && !p.deletedAt && payNotifyAt(p) > props.notificationsReadAt);
   const STALE_DAYS = 14;
   const staleCustomers = props.customers.filter((c) => {
     if (c.deletedAt) return false;
     const last = props.cps.filter((cp) => cp.customerId === c.id && !cp.deletedAt).sort((a, b) => b.time - a.time)[0];
-    return !!last && Date.now() - last.time > STALE_DAYS * 86400000;
+    return !!last && Date.now() - last.time > STALE_DAYS * 86400000 && staleNotifyAt(last.time) > props.notificationsReadAt;
   });
 
   const custName = (id: string) => props.customers.find((c) => c.id === id)?.name ?? "未知";
@@ -63,10 +64,16 @@ export default function Notifications(props: Props) {
         <div className="h-row" style={{ marginBottom: 8 }}>
           <span className="h-title sm">操作</span>
         </div>
-        <Btn kind="ghost" onClick={() => { void (async () => { await db.clearAll(); show("演示:清空所有通知(未实现)"); })(); }}>
-          标记全部已读(演示)
+        <Btn kind="ghost" onClick={() => { void (async () => {
+          const readAt = Date.now();
+          await db.setSetting("notificationsReadAt", readAt);
+          await props.reload();
+          show("已全部标记为已读", () => { void (async () => { await db.setSetting("notificationsReadAt", 0); await props.reload(); })(); });
+        })(); }}>
+          标记全部已读
         </Btn>
       </div>
+      {node}
     </div>
   );
 }
