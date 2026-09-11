@@ -10,7 +10,7 @@
         "typecheck": "tsc --noEmit",
         "test": "vitest run",
         "e2e": "tsc -p tsconfig.electron.json && playwright test",
-        "electron:dev": "vite build && tsc -p electron && electron .",
+        "electron:dev": "vite build && tsc -p tsconfig.electron.json && electron .",
         "electron:main": "tsc -p tsconfig.electron.json",
         "dist": "npm run build && npm run electron:main && electron-builder --win"
     },
