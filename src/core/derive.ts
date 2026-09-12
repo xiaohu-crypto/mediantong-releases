@@ -32,3 +32,27 @@ export function payNotifyAt(p: Payment): number {
 export function staleNotifyAt(lastTouchAt: number, staleDays = 14): number {
   return lastTouchAt + staleDays * 86400000;
 }
+
+export type CustomerStage = "潜在" | "有效" | "合作" | "流失";
+
+/**
+ * 客户阶段派生:
+ * - 合作:存在关联合同 或 有签约状态商机
+ * - 有效:存在在途商机(阶段不在 签约/输单/流失)
+ * - 流失:所有关联商机均为输单/流失 且 无签约合同
+ * - 潜在:以上都不是
+ */
+export function customerStage(
+  customerId: string,
+  deals: { customerId: string; stage: string; deletedAt?: number }[],
+  contracts: { customerId: string; deletedAt?: number }[]
+): CustomerStage {
+  const mineDeals = deals.filter((d) => d.customerId === customerId && !d.deletedAt);
+  const hasContract = contracts.some((c) => c.customerId === customerId && !c.deletedAt);
+  const hasSigned = mineDeals.some((d) => d.stage === "签约");
+  if (hasContract || hasSigned) return "合作";
+  const hasActive = mineDeals.some((d) => !["签约", "输单", "流失"].includes(d.stage));
+  if (hasActive) return "有效";
+  if (mineDeals.length > 0 && mineDeals.every((d) => ["输单", "流失"].includes(d.stage))) return "流失";
+  return "潜在";
+}

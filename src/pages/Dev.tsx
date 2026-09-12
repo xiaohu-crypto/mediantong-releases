@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import { db } from "../db/db";
 import { weightedValue } from "../core/metrics";
 import type { Customer, Deal, DealStage, Pitch } from "../types";
 import { Btn, Chip, Field, Modal, money, uid, useToast } from "../ui/common";
-import { IconPlus } from "../components/icons";
+import { IconPlus, IconClose } from "../components/icons";
+import { RecordPage, type WidgetDef, type RecordLayout } from "../ui/RecordPage";
+import { FieldsWidget } from "../ui/widgets/FieldsWidget";
 
 const STAGES: DealStage[] = ["线索", "MQL", "SQL", "商机", "报价", "谈判", "签约", "输单", "流失"];
 const PROB: Record<DealStage, number> = { 线索: 0.05, MQL: 0.1, SQL: 0.25, 商机: 0.4, 报价: 0.6, 谈判: 0.75, 签约: 1, 输单: 0, 流失: 0 };
@@ -13,6 +16,18 @@ function probOf(stage: string): number {
 }
 const MEDDIC = ["Metrics 指标", "Economic buyer 经济决策人", "Decision criteria 决策标准", "Decision process 决策流程", "Identify pain 痛点确认", "Champion 支持者"];
 const BANT = ["Budget 预算", "Authority 决策权", "Need 需求", "Timeline 时间"];
+
+/** P1 商机详情默认布局(P4 再做拖拽,数据结构预留) */
+const DEFAULT_DEAL_LAYOUT: RecordLayout = {
+  entity: "deal",
+  tabs: [
+    { id: "详情", title: "详情", widgets: [
+      { id: "info", type: "fields", title: "商机信息", span: 2 },
+      { id: "meddic", type: "custom", title: "MEDDIC" },
+      { id: "bant", type: "custom", title: "BANT" },
+    ]},
+  ],
+};
 
 const SCRIPTS = [
   { scene: "首次触达", text: "X 总您好,我是专注[行业]媒介投放的顾问。看到贵司近期在[节点]的动作,我们服务过同类客户的组合打法可将获客成本降低 20-30%,方便约 15 分钟交流吗?" },
@@ -31,7 +46,20 @@ export default function Dev(props: Props) {
   const [selected, setSelected] = useState<string | null>(null);
   const [pitchOpen, setPitchOpen] = useState(false);
   const [extraStages, setExtraStages] = useState<string[]>([]);
+  const [dealLayout, setDealLayout] = useState<RecordLayout>(DEFAULT_DEAL_LAYOUT);
+  /* P4 布局编辑模式 */
+  const [editingLayout, setEditingLayout] = useState(false);
   useEffect(() => { void (async () => setExtraStages(await db.getSetting<string[]>("customStages", [])))(); }, []);
+  /* P1 记录布局预留:从 settings.recordLayouts 合并默认 */
+  useEffect(() => {
+    void (async () => {
+      const saved = await db.getSetting<Record<string, RecordLayout>>("recordLayouts", {});
+      const d = saved["deal"];
+      if (d && Array.isArray(d.tabs) && d.tabs.length > 0) {
+        setDealLayout({ ...DEFAULT_DEAL_LAYOUT, ...d, tabs: d.tabs });
+      }
+    })();
+  }, []);
   const [pf, setPf] = useState({ name: "", customerId: "", date: new Date().toISOString().slice(0, 10), investment: "", competitors: "", result: "待定", lossReason: "", reviewNote: "" });
   const [aiPitchBusy, setAiPitchBusy] = useState(false);
 
@@ -96,6 +124,77 @@ export default function Dev(props: Props) {
     await props.reload();
   }
 
+  /** P1:根据 WidgetDef 渲染商机详情具体 Widget */
+  /* P4 拖拽重排回调 */
+  function handleLayoutChange(next: RecordLayout) {
+    setDealLayout(next);
+  }
+  /* P4 info 字段可见性 */
+  function setInfoVisibleFields(visible: string[]) {
+    setDealLayout((prev) => ({
+      ...prev,
+      tabs: prev.tabs.map((t) => ({
+        ...t,
+        widgets: t.widgets.map((w) =>
+          w.id === "info" ? { ...w, config: { ...(w.config ?? {}), visibleFields: visible } } : w
+        ),
+      })),
+    }));
+  }
+  /* P4 退出编辑:完整覆盖保存 recordLayouts.deal */
+  async function finishEditLayout() {
+    const all = await db.getSetting<Record<string, RecordLayout>>("recordLayouts", {});
+    await db.setSetting("recordLayouts", { ...all, deal: dealLayout });
+    show("布局已保存");
+    setEditingLayout(false);
+  }
+
+  function renderDealWidget(w: WidgetDef): ReactNode {
+    if (!sel) return null;
+    if (w.id === "info") {
+      return (
+        <FieldsWidget title="商机信息" fields={[
+          { label: "商机金额", value: money(sel.value) },
+          { label: "阶段", value: sel.stage },
+          { label: "概率", value: Math.round((sel.probability ?? probOf(sel.stage)) * 100) + "%" },
+          { label: "预计成交日", value: sel.closeDate ?? "未设定" },
+          { label: "加权金额", value: money(weightedValue(sel)) },
+        ]} editing={editingLayout} visibleFields={w.config?.visibleFields as string[] | undefined} onVisibleFieldsChange={setInfoVisibleFields} />
+      );
+    }
+    if (w.id === "meddic") {
+      return (
+        <div className="card widget-card">
+          <div className="h-row" style={{ padding: "14px 16px 0", marginBottom: 4 }}><span className="h-title sm">MEDDIC 成熟度</span></div>
+          <div style={{ padding: "4px 16px 14px" }}>
+            {MEDDIC.map((m) => (
+              <div className="mini-row" key={m}>
+                <span className="ev">{m}</span>
+                <Btn kind={(sel.meddic ?? []).includes(m) ? "data" : "done"} sm onClick={() => { void toggleTag(sel, "meddic", m); }}>{(sel.meddic ?? []).includes(m) ? "已确认" : "标记"}</Btn>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+    if (w.id === "bant") {
+      return (
+        <div className="card widget-card">
+          <div className="h-row" style={{ padding: "14px 16px 0", marginBottom: 4 }}><span className="h-title sm">BANT 资格</span></div>
+          <div style={{ padding: "4px 16px 14px" }}>
+            {BANT.map((b) => (
+              <div className="mini-row" key={b}>
+                <span className="ev">{b}</span>
+                <Btn kind={(sel.bant ?? []).includes(b) ? "data" : "done"} sm onClick={() => { void toggleTag(sel, "bant", b); }}>{(sel.bant ?? []).includes(b) ? "已确认" : "标记"}</Btn>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+    return null;
+  }
+
   return (
     <div>
       <div className="page-head">
@@ -103,7 +202,7 @@ export default function Dev(props: Props) {
         <div className="actions"><Btn kind="primary" onClick={() => setPitchOpen(true)}><IconPlus size={14} /> 登记比稿</Btn></div>
       </div>
 
-      <div className="h-row"><span className="h-title">Pipeline(按阶段)</span><Chip kind="data">点击卡片评估</Chip></div>
+      <div className="h-row"><span className="h-title">Pipeline(按阶段)</span><Chip kind="data">点击卡片查看详情</Chip></div>
       <div className="kanban" style={{ gridTemplateColumns: "repeat(" + colStages.length + ",1fr)", marginBottom: 16 }}>
         {colStages.map((stage) => {
           const col = deals.filter((d) => d.stage === stage);
@@ -127,38 +226,46 @@ export default function Dev(props: Props) {
         })}
       </div>
 
-      {sel ? (
-        <div className="card card-pad" style={{ marginBottom: 16 }}>
-          <div className="h-row">
-            <span className="h-title sm">{nameOf(sel.customerId)} · {sel.title}</span>
-            <Btn kind="ghost" sm style={{ marginLeft: "auto" }} onClick={() => openDealEdit(sel)}>编辑商机</Btn>
-            <select className="sel" style={{ marginLeft: "auto" }} value={sel.stage} onChange={(e) => { void setStage(sel, e.target.value as DealStage); }}>
-              {[...STAGES, ...extraStages.filter((s) => !STAGES.includes(s as DealStage))].map((s) => <option key={s} value={s}>{s}({Math.round(probOf(s) * 100)}%)</option>)}
-            </select>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-            <div>
-              <div className="dsec" style={{ padding: 0 }}>MEDDIC 商机成熟度</div>
-              {MEDDIC.map((m) => (
-                <div className="mini-row" key={m}>
-                  <span className="ev">{m}</span>
-                  <Btn kind={(sel.meddic ?? []).includes(m) ? "data" : "done"} sm onClick={() => { void toggleTag(sel, "meddic", m); }}>{(sel.meddic ?? []).includes(m) ? "已确认" : "标记"}</Btn>
+      <div className={"drawer-mask" + (sel ? " open" : "")} onClick={() => setSelected(null)} />
+      <aside className={"drawer" + (sel ? " open" : "")}>
+        {sel ? (
+          <>
+            <div className="drawer-head">
+              <div className="detail-avatar">{nameOf(sel.customerId).slice(0, 1)}</div>
+              <div>
+                <div className="detail-title">{sel.title}</div>
+                <div className="detail-sub">
+                  <Chip kind="data">{nameOf(sel.customerId)}</Chip>
+                  <select
+                    className="sel"
+                    style={{ minHeight: 26, padding: "2px 8px", fontSize: "var(--text-xs)" }}
+                    value={sel.stage}
+                    onChange={(e) => { void setStage(sel, e.target.value as DealStage); }}
+                  >
+                    {[...STAGES, ...extraStages.filter((s) => !STAGES.includes(s as DealStage))].map((s) => <option key={s} value={s}>{s}({Math.round(probOf(s) * 100)}%)</option>)}
+                  </select>
                 </div>
-              ))}
+              </div>
+              <button className="icon-btn" style={{ marginLeft: "auto" }} onClick={() => setSelected(null)} aria-label="关闭"><IconClose size={16} /></button>
             </div>
-            <div>
-              <div className="dsec" style={{ padding: 0 }}>BANT 资格</div>
-              {BANT.map((b) => (
-                <div className="mini-row" key={b}>
-                  <span className="ev">{b}</span>
-                  <Btn kind={(sel.bant ?? []).includes(b) ? "data" : "done"} sm onClick={() => { void toggleTag(sel, "bant", b); }}>{(sel.bant ?? []).includes(b) ? "已确认" : "标记"}</Btn>
-                </div>
-              ))}
-              <div className="alert-line"><span className="txt">加权金额</span><span className="amt num">{money(weightedValue(sel))}</span></div>
+            <div className="drawer-body">
+              <RecordPage
+                layout={dealLayout}
+                activeTab="详情"
+                onTabChange={() => {}}
+                renderWidget={renderDealWidget}
+                editing={editingLayout}
+                onLayoutChange={handleLayoutChange}
+              />
             </div>
-          </div>
-        </div>
-      ) : null}
+            <div className="drawer-foot">
+              <Btn kind={editingLayout ? "data" : "ghost"} onClick={() => { if (editingLayout) void finishEditLayout(); else setEditingLayout(true); }}>{editingLayout ? "完成" : "编辑布局"}</Btn>
+              <Btn kind="primary" onClick={() => openDealEdit(sel)}>编辑商机</Btn>
+            </div>
+          </>
+        ) : null}
+      </aside>
+
       {efOpen && sel ? (
         <Modal title="编辑商机" onClose={() => setEfOpen(false)} footer={
           <div className="grow" style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
@@ -177,7 +284,7 @@ export default function Dev(props: Props) {
               <input className="inp num" type="date" style={{ width: "100%" }} value={ef.closeDate} onChange={(e) => setEf({ ...ef, closeDate: e.target.value })} />
             </Field>
           </div>
-          <p className="muted" style={{ fontSize: "var(--text-xs)" }}>概率由阶段自动派生;阶段在上方下拉调整。</p>
+          <p className="muted" style={{ fontSize: "var(--text-xs)" }}>概率由阶段自动派生;阶段在抽屉头部下拉调整。</p>
         </Modal>
       ) : null}
 

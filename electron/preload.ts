@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld("mta", {
   vaultEnsure: () => ipcRenderer.invoke("vault:ensure"),
   windowMode: ((process.argv.find((a) => a.startsWith("--mt-window-mode=")) ?? "").split("=")[1]) ?? "integrated",
   titlebarSet: (mode: string) => ipcRenderer.invoke("titlebar:set", mode) as Promise<{ ok: boolean; restart?: boolean }>,
+  titlebarSetTheme: (theme: string) => ipcRenderer.invoke("titlebar:setTheme", theme) as Promise<boolean>,
   backupPickDir: () => ipcRenderer.invoke("backup:pickDir"),
   backupWrite: (args: { dir: string; content: string; keep: number }) => ipcRenderer.invoke("backup:write", args),
   onUpdateReady: (cb: (v: string) => void) => { ipcRenderer.on("update:ready", (_e, d) => cb(d.version)); },

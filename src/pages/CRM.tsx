@@ -1,12 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { db } from "../db/db";
 import { funnel } from "../core/metrics";
-import { healthOf, latestTouch } from "../core/derive";
+import { healthOf, latestTouch, customerStage, type CustomerStage } from "../core/derive";
 import { validateCustomer } from "../core/validators";
 import type { Contact, ContactPoint, Contract, Customer, Deal, Payment, Rel, Task } from "../types";
 import { Btn, Chip, money, Modal, Field, uid, useToast } from "../ui/common";
 import { IconClose, IconPlus, IconSearch } from "../components/icons";
 import ImportCustomers from "../components/ImportCustomers";
+import { RecordPage, type WidgetDef, type RecordLayout } from "../ui/RecordPage";
+import { FieldsWidget } from "../ui/widgets/FieldsWidget";
+import { RelatedListWidget } from "../ui/widgets/RelatedListWidget";
+import { TimelineWidget } from "../ui/widgets/TimelineWidget";
+import { parseStructuredAdvice, type StructuredAdvice } from "../core/ai/script";
+import { askCustomer, type AskContext } from "../core/ai/ask";
 
 interface Props {
   customers: Customer[]; contacts: Contact[]; rels: Rel[]; deals: Deal[];
@@ -17,6 +24,38 @@ interface Props {
 }
 
 interface SavedView { name: string; q: string; industry: string; sortKey: "name" | "health" | "deal" }
+
+type Density = "精简" | "紧凑" | "舒适";
+const DEFAULT_COLS: Record<string, boolean> = { name: true, industry: true, grade: true, health: true, stage: true, deal: true, touch: true };
+const COL_LIST: { key: string; label: string }[] = [
+  { key: "name", label: "客户名称" },
+  { key: "industry", label: "行业" },
+  { key: "grade", label: "等级" },
+  { key: "health", label: "健康度" },
+  { key: "stage", label: "客户阶段" },
+  { key: "deal", label: "在途商机" },
+  { key: "touch", label: "最近跟进" },
+];
+
+/** P1 客户详情默认布局(P4 再做拖拽编辑,数据结构预留) */
+const DEFAULT_CUSTOMER_LAYOUT: RecordLayout = {
+  entity: "customer",
+  tabs: [
+    { id: "概览", title: "概览", widgets: [
+      { id: "base", type: "fields", title: "客户基本信息", span: 2 },
+      { id: "contacts", type: "related", title: "决策链联系人", span: 2 },
+      { id: "deals", type: "related", title: "在途商机" },
+      { id: "contracts", type: "related", title: "合同与回款" },
+    ]},
+    { id: "跟进", title: "跟进", widgets: [
+      { id: "timeline", type: "timeline", title: "跟进时间线", span: 2 },
+      { id: "tasks", type: "related", title: "关联任务" },
+    ]},
+    { id: "决策链", title: "决策链", widgets: [] },
+    { id: "媒介策略", title: "媒介策略", widgets: [] },
+    { id: "AI建议", title: "AI建议", widgets: [] },
+  ],
+};
 
 function MediaStrategyView(props: { customer: Customer; onEdit: () => void }) {
   const s = ((props.customer.custom ?? {}) as Record<string, Record<string, string>>).mediaStrategy;
@@ -42,13 +81,12 @@ function MediaStrategyView(props: { customer: Customer; onEdit: () => void }) {
   );
 }
 
-const CH = { 微信: "var(--success)", 拜访: "var(--brand)", 电话: "var(--data)", 邮件: "var(--ink-4)" } as const;
-
 export default function CRM(props: Props) {
   const { show, node } = useToast();
   const [q, setQ] = useState("");
   const [industry, setIndustry] = useState("");
   const [sortKey, setSortKey] = useState<"name" | "health" | "deal">("name");
+  const [stageFilter, setStageFilter] = useState<"" | CustomerStage>("");
   const [openId, setOpenId] = useState<string | null>(props.focusCustomerId ?? null);
   const [timeline, setTimeline] = useState<{ ts: number; kind: string; title: string }[]>([]);
   useEffect(() => {
@@ -74,7 +112,20 @@ export default function CRM(props: Props) {
       setTimeline(items.slice(0, 80));
     })();
   }, [openId]);
-  const [tab, setTab] = useState<"概览" | "决策链" | "时间线" | "合同与回款" | "媒介策略" | "AI建议">("概览");
+  const [tab, setTab] = useState<"概览" | "跟进" | "决策链" | "媒介策略" | "AI建议">("概览");
+  /* P1 记录布局:默认硬编码,从 settings.recordLayouts 合并(P4 再做拖拽) */
+  const [customerLayout, setCustomerLayout] = useState<RecordLayout>(DEFAULT_CUSTOMER_LAYOUT);
+  /* P4 布局编辑模式 */
+  const [editingLayout, setEditingLayout] = useState(false);
+  useEffect(() => {
+    void (async () => {
+      const saved = await db.getSetting<Record<string, RecordLayout>>("recordLayouts", {});
+      const cust = saved["customer"];
+      if (cust && Array.isArray(cust.tabs) && cust.tabs.length > 0) {
+        setCustomerLayout({ ...DEFAULT_CUSTOMER_LAYOUT, ...cust, tabs: cust.tabs });
+      }
+    })();
+  }, []);
   /* 客户级媒介策略(存于 customer.custom.mediaStrategy) */
   const [strategyEdit, setStrategyEdit] = useState(false);
   const [strategyDraft, setStrategyDraft] = useState({ audience: "", budget: "", mix: "", resources: "", note: "" });
@@ -104,9 +155,15 @@ export default function CRM(props: Props) {
   }
   const [aiBusy, setAiBusy] = useState(false);
   const [aiAdvice, setAiAdvice] = useState("");
+  const [aiStructured, setAiStructured] = useState<StructuredAdvice | null>(null);
+  /* P3 本地问数:输入框 + 最近 3 条问答历史(纯本地,不调云端) */
+  const [askInput, setAskInput] = useState("");
+  const [askHistory, setAskHistory] = useState<{ q: string; a: string }[]>([]);
+  useEffect(() => { setAiAdvice(""); setAiStructured(null); setAskHistory([]); setAskInput(""); }, [openId]);
+
   async function genAdvice() {
     if (!drawerC) return;
-    setAiBusy(true); setAiAdvice("");
+    setAiBusy(true); setAiAdvice(""); setAiStructured(null);
     try {
       const { aiChat } = await import("../core/ai/client");
       const recentCps = props.cps.filter((cp) => cp.customerId === drawerC.id && !cp.deletedAt).slice(-5);
@@ -114,17 +171,42 @@ export default function CRM(props: Props) {
       const ctx = "客户:" + drawerC.name + "\n行业:" + drawerC.industry + "\n等级:" + drawerC.grade +
         "\n最近接触:" + recentCps.map((cp) => new Date(cp.time).toLocaleDateString() + " " + cp.channel + " " + cp.summary).join("; ") +
         "\n在途商机:" + custDeals.map((d) => d.title + "(" + d.stage + ")").join("; ");
+      const sys = "你是资深媒体广告销售教练。基于客户信息给出跟进建议,严格按以下格式输出:\n" +
+        "【总结】一句话概括客户现状和跟进重点\n" +
+        "【关键决策】1. ... 2. ...(需要客户方决策的事项,最多3条)\n" +
+        "【待办】1. ... 2. ...(我方需要执行的动作,最多3条)\n" +
+        "【风险】1. ... 2. ...(潜在风险,最多2条;无风险写\"无明显风险\")";
       const r = await aiChat([
-        { role: "system", content: "你是资深媒体广告销售教练。基于客户信息给出3条具体可执行的跟进建议,每条不超过50字,用换行分隔。" },
+        { role: "system", content: sys },
         { role: "user", content: ctx },
       ]);
-      setAiAdvice(r.ok ? (r.content ?? "无回复") : "调用失败:" + (r.error ?? ""));
+      const text = r.ok ? (r.content ?? "") : "调用失败:" + (r.error ?? "");
+      setAiAdvice(text);
+      setAiStructured(r.ok ? parseStructuredAdvice(text) : null);
     } finally { setAiBusy(false); }
+  }
+
+  /* P3 本地问数:纯规则匹配,即时响应 */
+  function runAsk() {
+    if (!drawerC || !askInput.trim()) return;
+    const askCtx: AskContext = {
+      customer: drawerC,
+      deals: drawerDeals,
+      contracts: drawerContracts,
+      payments: drawerPays,
+      cps: drawerCps,
+      tasks: drawerTasks,
+      rels: drawerRels,
+    };
+    const ans = askCustomer(askInput, askCtx);
+    setAskHistory((h) => [{ q: askInput.trim(), a: ans }, ...h].slice(0, 3));
+    setAskInput("");
   }
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
-  const [dense, setDense] = useState(false);
-  const [vc, setVc] = useState<Record<string, boolean>>({ industry: true, grade: true, health: true, deal: true, touch: true });
+  const [density, setDensity] = useState<Density>("舒适");
+  const [vc, setVc] = useState<Record<string, boolean>>(DEFAULT_COLS);
+  const [colsOpen, setColsOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [savedViews, setSavedViews] = useState<SavedView[]>([]);
   const [viewName, setViewName] = useState("");
@@ -137,6 +219,12 @@ export default function CRM(props: Props) {
   useEffect(() => {
     void (async () => setSavedViews(await db.getSetting<SavedView[]>("crmViews", [])))();
   }, []);
+  useEffect(() => {
+    void (async () => {
+      setDensity(await db.getSetting<Density>("crmDensity", "舒适"));
+      setVc(await db.getSetting<Record<string, boolean>>("crmColumns", DEFAULT_COLS));
+    })();
+  }, []);
 
   const customers = props.customers.filter((c) => !c.deletedAt);
   const deals = props.deals.filter((d) => !d.deletedAt);
@@ -147,7 +235,8 @@ export default function CRM(props: Props) {
   const rows = useMemo(() => {
     const f = customers.filter((c) =>
       (industry === "" || c.industry === industry) &&
-      (q === "" || c.name.includes(q))
+      (q === "" || c.name.includes(q)) &&
+      (stageFilter === "" || customerStage(c.id, deals, props.contracts) === stageFilter)
     );
     return f.sort((a, b) => {
       if (sortKey === "health") return healthOf(b.id, props.cps, payments) - healthOf(a.id, props.cps, payments);
@@ -157,10 +246,21 @@ export default function CRM(props: Props) {
       }
       return a.name.localeCompare(b.name, "zh-CN");
     });
-  }, [customers, industry, q, sortKey, props.cps, payments, deals]);
+  }, [customers, industry, q, sortKey, stageFilter, props.cps, payments, deals, props.contracts]);
 
   const f = funnel(deals);
   const open = openId ? customers.find((c) => c.id === openId) ?? null : null;
+
+  const nextDensity: Density = density === "舒适" ? "紧凑" : density === "紧凑" ? "精简" : "舒适";
+  function cycleDensity() {
+    setDensity(nextDensity);
+    void db.setSetting("crmDensity", nextDensity);
+  }
+  async function saveCols(next: Record<string, boolean>) {
+    setVc(next);
+    await db.setSetting("crmColumns", next);
+    show("列显示已保存");
+  }
 
   async function submitAdd() {
     const errs = validateCustomer({ name: form.name, industry: form.industry, grade: form.grade, billingTaxNo: form.billingTaxNo || undefined }, customers.map((c) => c.name));
@@ -218,6 +318,108 @@ export default function CRM(props: Props) {
     show("客户包已导出(交接/归档用)");
   }
 
+  /** P1:根据 WidgetDef 渲染客户详情具体 Widget(数据由页面侧提供) */
+  /* P4 拖拽重排回调:直接更新 state(退出编辑时再落库) */
+  function handleLayoutChange(next: RecordLayout) {
+    setCustomerLayout(next);
+  }
+  /* P4 base 字段可见性:写入 widget.config.visibleFields */
+  function setBaseVisibleFields(visible: string[]) {
+    setCustomerLayout((prev) => ({
+      ...prev,
+      tabs: prev.tabs.map((t) => ({
+        ...t,
+        widgets: t.widgets.map((w) =>
+          w.id === "base" ? { ...w, config: { ...(w.config ?? {}), visibleFields: visible } } : w
+        ),
+      })),
+    }));
+  }
+  /* P4 退出编辑:完整覆盖保存 recordLayouts.customer */
+  async function finishEditLayout() {
+    const all = await db.getSetting<Record<string, RecordLayout>>("recordLayouts", {});
+    await db.setSetting("recordLayouts", { ...all, customer: customerLayout });
+    show("布局已保存");
+    setEditingLayout(false);
+  }
+
+  function renderCustomerWidget(w: WidgetDef): ReactNode {
+    if (!drawerC) return null;
+    if (w.type === "fields" && w.id === "base") {
+      const h = healthOf(drawerC.id, props.cps, payments);
+      const arc = 2 * Math.PI * 16;
+      const baseVisible = w.config?.visibleFields as string[] | undefined;
+      return (
+        <FieldsWidget title="客户基本信息" fields={[
+          { label: "客户健康度(派生)", value: (
+            <div className="score-wrap" style={{ gridColumn: "auto", padding: 0, margin: 0, border: "none" }}>
+              <svg width="40" height="40" className="ring"><circle className="bg" cx="20" cy="20" r="16" /><circle className="fg" cx="20" cy="20" r="16" strokeDasharray={arc} strokeDashoffset={arc * (1 - h / 100)} /></svg>
+              <span className="score-num num" style={{ fontSize: 18 }}>{h}<span style={{ fontSize: "var(--text-sm)", color: "var(--ink-4)", fontWeight: 500 }}> / 100</span></span>
+            </div>
+          )},
+          { label: "开票抬头", value: drawerC.billingTitle ?? "未建档" },
+          { label: "税号", value: drawerC.billingTaxNo ?? "未建档" },
+          { label: "在途商机", value: drawerDeals.filter((d) => !["输单", "流失"].includes(d.stage)).length + " 个" },
+          { label: "累计商机额", value: money(drawerDeals.reduce((s, d) => s + d.value, 0)) },
+          ...custFields.map((cf) => ({ label: cf.label, value: String((drawerC.custom ?? {})[cf.key] ?? "—") })),
+        ]} editing={editingLayout} visibleFields={baseVisible} onVisibleFieldsChange={setBaseVisibleFields} />
+      );
+    }
+    if (w.type === "related" && w.id === "contacts") {
+      return (
+        <RelatedListWidget title="决策链联系人" emptyText="暂无联系人关联" items={drawerContacts.map(({ rel, contact }) => ({
+          id: rel.id,
+          title: contact?.name ?? "未命名",
+          sub: (contact?.title ?? "") + (contact?.phone ? " · " + contact.phone : ""),
+          meta: <Chip kind={rel.role === "决策人DM" ? "danger" : rel.role === "影响者" ? "data" : "gray"}>{rel.role}</Chip>,
+        }))} />
+      );
+    }
+    if (w.type === "related" && w.id === "deals") {
+      return (
+        <RelatedListWidget title="在途商机" emptyText="暂无在途商机" items={drawerDeals.filter((d) => !["输单", "流失"].includes(d.stage)).map((d) => ({
+          id: d.id,
+          title: d.title,
+          sub: d.stage,
+          meta: <Chip kind="data">{money(d.value)}</Chip>,
+        }))} />
+      );
+    }
+    if (w.type === "related" && w.id === "contracts") {
+      return (
+        <RelatedListWidget title="合同与回款" emptyText="暂无合同" items={drawerContracts.map((ht) => ({
+          id: ht.id,
+          title: ht.name,
+          sub: ht.signDate + " · " + ht.status,
+          meta: (
+            <span>
+              {drawerPays.filter((p) => p.contractId === ht.id).map((p) => (
+                <Chip key={p.id} kind={p.status === "逾期" ? "danger" : p.status === "已收" ? "green" : "warn"} style={{ marginRight: 4 }}>{p.status} {money(p.amount)}</Chip>
+              ))}
+            </span>
+          ),
+        }))} />
+      );
+    }
+    if (w.type === "timeline" && w.id === "timeline") {
+      return (
+        <TimelineWidget title="跟进时间线" entries={timeline.map((t, i) => ({ id: String(i), ts: t.ts, kind: t.kind, title: t.title }))} emptyText="暂无动态(接触点/任务/商机/回款事件将按时间合并展示)" />
+      );
+    }
+    if (w.type === "related" && w.id === "tasks") {
+      return (
+        <RelatedListWidget title="关联任务" emptyText="暂无关联任务" items={drawerTasks.map((t) => ({
+          id: t.id,
+          title: t.title,
+          sub: t.kanbanCol,
+        }))} />
+      );
+    }
+    return null;
+  }
+
+  const colCount = 1 + 1 + (vc.industry ? 1 : 0) + (vc.grade ? 1 : 0) + (vc.health ? 1 : 0) + (vc.stage ? 1 : 0) + (vc.deal ? 1 : 0) + (vc.touch ? 1 : 0);
+
   return (
     <div>
       <div className="page-head">
@@ -239,12 +441,15 @@ export default function CRM(props: Props) {
 
       <div className="card" style={{ overflow: "hidden" }}>
         <div style={{ display: "flex", gap: 6, padding: "10px 14px 0", flexWrap: "wrap" }}>
-          <Btn kind="ghost" sm onClick={() => setDense(!dense)}>密度:{dense ? "紧凑" : "舒适"}</Btn>
-          <Btn kind="ghost" sm onClick={() => setVc({ ...vc, industry: !vc.industry })}>{vc.industry ? "隐藏行业" : "显示行业"}</Btn>
-          <Btn kind="ghost" sm onClick={() => setVc({ ...vc, grade: !vc.grade })}>{vc.grade ? "隐藏等级" : "显示等级"}</Btn>
-          <Btn kind="ghost" sm onClick={() => setVc({ ...vc, health: !vc.health })}>{vc.health ? "隐藏健康度" : "显示健康度"}</Btn>
-          <Btn kind="ghost" sm onClick={() => setVc({ ...vc, deal: !vc.deal })}>{vc.deal ? "隐藏商机额" : "显示商机额"}</Btn>
-          <Btn kind="ghost" sm onClick={() => setVc({ ...vc, touch: !vc.touch })}>{vc.touch ? "隐藏跟进" : "显示跟进"}</Btn>
+          <Btn kind="ghost" sm onClick={cycleDensity}>密度:{density}</Btn>
+          <Btn kind="ghost" sm onClick={() => setColsOpen(true)}>字段管理</Btn>
+        </div>
+        <div className="stage-filter">
+          {(["", "潜在", "有效", "合作", "流失"] as const).map((s) => (
+            <span key={s || "全部"} className={"stage-chip" + (stageFilter === s ? " active" : "")} onClick={() => setStageFilter(s)}>
+              {s === "" ? "全部" : s}
+            </span>
+          ))}
         </div>
         <div className="toolbar-row" style={{ padding: "10px 14px 0", marginBottom: 4 }}>
           <div className="filter-input">
@@ -299,14 +504,15 @@ export default function CRM(props: Props) {
             <button className="btn ghost sm" onClick={() => setSelected(new Set())}>取消选择</button>
           </div>
         ) : null}
-        <div className={"tgrid-wrap" + (dense ? " dense" : "")}>
+        <div className={"tgrid-wrap density-" + density}>
           <table className="tgrid">
-            <thead><tr><th style={{ width: 32 }}><input type="checkbox" checked={selected.size === rows.length && rows.length > 0} onChange={(e) => { if (e.target.checked) setSelected(new Set(rows.map((r) => r.id))); else setSelected(new Set()); }} /></th><th style={{ width: "20%" }}>客户</th>{vc.industry ? <th>行业</th> : null}{vc.grade ? <th>等级</th> : null}{vc.health ? <th>健康度</th> : null}<th>阶段</th>{vc.deal ? <th style={{ textAlign: "right" }}>在途商机</th> : null}{vc.touch ? <th>最近跟进</th> : null}</tr></thead>
+            <thead><tr><th style={{ width: 32 }}><input type="checkbox" checked={selected.size === rows.length && rows.length > 0} onChange={(e) => { if (e.target.checked) setSelected(new Set(rows.map((r) => r.id))); else setSelected(new Set()); }} /></th><th style={{ width: "20%" }}>客户</th>{vc.industry ? <th>行业</th> : null}{vc.grade ? <th>等级</th> : null}{vc.health ? <th>健康度</th> : null}{vc.stage ? <th>客户阶段</th> : null}{vc.deal ? <th style={{ textAlign: "right" }}>在途商机</th> : null}{vc.touch ? <th>最近跟进</th> : null}</tr></thead>
             <tbody>
               {rows.map((c) => {
                 const h = healthOf(c.id, props.cps, payments);
                 const activeDeals = deals.filter((d) => d.customerId === c.id && !["签约", "输单", "流失"].includes(d.stage));
                 const lt = latestTouch(c.id, props.cps);
+                const stg = customerStage(c.id, deals, props.contracts);
                 const cls = h >= 80 ? "good" : h >= 60 ? "mid" : "low";
                 return (
                   <tr key={c.id} onClick={() => { setOpenId(c.id); setTab("概览"); }}>
@@ -315,13 +521,13 @@ export default function CRM(props: Props) {
                     {vc.industry ? <td>{c.industry}</td> : null}
                     {vc.grade ? <td><Chip kind={c.grade === "A" || c.grade === "S" ? "brand" : "gray"}>{c.grade}</Chip></td> : null}
                     {vc.health ? <td><div className="mini-hp"><div className="hp-dot"><i className={cls} style={{ width: h + "%" }} /></div><span className="hp-val num" style={{ color: h >= 80 ? "var(--success)" : h >= 60 ? "var(--warning)" : "var(--danger)" }}>{h}</span></div></td> : null}
-                    <td><span className={h >= 80 ? "chip green" : h >= 60 ? "chip warn" : "chip danger"}>{h >= 80 ? "健康" : h >= 60 ? "观察" : "风险"}</span></td>
+                    {vc.stage ? <td><Chip kind={stg === "潜在" ? "gray" : stg === "有效" ? "data" : stg === "合作" ? "green" : "danger"}>{stg}</Chip></td> : null}
                     {vc.deal ? <td className="num" style={{ textAlign: "right" }}>{activeDeals.length ? `${activeDeals.length} 个 · ${money(activeDeals.reduce((s, d) => s + d.value, 0))}` : "—"}</td> : null}
                     {vc.touch ? <td>{lt ? new Date(lt).toLocaleDateString("zh-CN") : "—"}</td> : null}
                   </tr>
                 );
               })}
-              {rows.length === 0 ? <tr><td colSpan={7} style={{ textAlign: "center", color: "var(--ink-3)", padding: 24 }}>没有匹配的客户</td></tr> : null}
+              {rows.length === 0 ? <tr><td colSpan={colCount} style={{ textAlign: "center", color: "var(--ink-3)", padding: 24 }}>没有匹配的客户</td></tr> : null}
             </tbody>
           </table>
         </div>
@@ -343,32 +549,17 @@ export default function CRM(props: Props) {
               </div>
               <button className="icon-btn" style={{ marginLeft: "auto" }} onClick={() => setOpenId(null)} aria-label="关闭"><IconClose size={16} /></button>
             </div>
-            <div className="dtabs">
-              {(["概览", "决策链", "时间线", "合同与回款", "媒介策略", "AI建议"] as const).map((t) => (
-                <span key={t} className={"dtab" + (tab === t ? " active" : "")} onClick={() => setTab(t)}>{t}</span>
-              ))}
-            </div>
             <div className="drawer-body">
-              {tab === "概览" && (
-                <div className="kv-grid">
-                  <div className="score-wrap">
-                    <svg width="52" height="52" className="ring"><circle className="bg" cx="26" cy="26" r="21" /><circle className="fg" cx="26" cy="26" r="21" strokeDasharray="132" strokeDashoffset={132 - (132 * healthOf(drawerC.id, props.cps, payments)) / 100} /></svg>
-                    <div>
-                      <div style={{ fontSize: "var(--text-xs)", color: "var(--ink-4)" }}>客户健康度(派生)</div>
-                      <div className="score-num num">{healthOf(drawerC.id, props.cps, payments)}<span style={{ fontSize: "var(--text-sm)", color: "var(--ink-4)", fontWeight: 500 }}> / 100</span></div>
-                    </div>
-                  </div>
-                  <div className="kv"><span className="k">开票抬头</span><span className="v" style={{ fontSize: "var(--text-sm)", fontWeight: 500 }}>{drawerC.billingTitle ?? "未建档"}</span></div>
-                  <div className="kv"><span className="k">税号</span><span className="v" style={{ fontSize: "var(--text-sm)", fontWeight: 500 }}>{drawerC.billingTaxNo ?? "未建档"}</span></div>
-                  <div className="kv"><span className="k">在途商机</span><span className="v num">{drawerDeals.filter((d) => !["输单", "流失"].includes(d.stage)).length} 个</span></div>
-                  <div className="kv"><span className="k">累计商机额</span><span className="v num">{money(drawerDeals.reduce((s, d) => s + d.value, 0))}</span></div>
-                  {custFields.map((cf) => (
-                    <div className="kv" key={cf.id}><span className="k">{cf.label}</span><span className="v" style={{ fontSize: "var(--text-sm)", fontWeight: 500 }}>{String((drawerC.custom ?? {})[cf.key] ?? "—")}</span></div>
-                  ))}
-                </div>
-              )}
+              <RecordPage
+                layout={customerLayout}
+                activeTab={tab}
+                onTabChange={(t) => setTab(t as typeof tab)}
+                renderWidget={renderCustomerWidget}
+                editing={editingLayout}
+                onLayoutChange={handleLayoutChange}
+              />
               {tab === "决策链" && (
-                <div>
+                <div style={{ paddingTop: 6 }}>
                   <div className="dsec">角色徽章制(不画图谱)</div>
                   {drawerContacts.map(({ rel, contact }) => (
                     <div className="chain-row" key={rel.id}>
@@ -385,57 +576,60 @@ export default function CRM(props: Props) {
                   {drawerContacts.length === 0 ? <p className="muted" style={{ padding: "12px 18px" }}>暂无联系人关联</p> : null}
                 </div>
               )}
-              {tab === "时间线" && (
-                <div style={{ paddingTop: 10 }}>
-                  {timeline.map((it, i) => (
-                    <div className="tl-item" key={i}>
-                      <span className="tl-dot" style={{ background: it.kind === "接触" ? CH["微信"] : it.kind === "任务" ? "var(--warning)" : it.kind === "商机" ? "var(--brand)" : "var(--data)" }} />
-                      <div>
-                        <div className="tl-title"><span className="chip gray" style={{ fontSize: 10, padding: "0 6px", marginRight: 6 }}>{it.kind}</span>{it.title}</div>
-                        <div className="tl-time">{new Date(it.ts).toLocaleString("zh-CN")}</div>
-                      </div>
-                    </div>
-                  ))}
-                  {timeline.length === 0 ? <p className="muted" style={{ padding: "0 18px" }}>暂无动态(接触点/任务/商机/回款事件将按时间合并展示)</p> : null}
-                </div>
-              )}
-              {tab === "合同与回款" && (
-                <div style={{ padding: "12px 18px" }}>
-                  {drawerContracts.map((ht) => (
-                    <div key={ht.id} style={{ marginBottom: 10 }}>
-                      <div style={{ fontWeight: 600, fontSize: "var(--text-sm)" }}>{ht.name}</div>
-                      <div className="cell-sub num">{money(ht.amount)} · {ht.signDate} · {ht.status}</div>
-                      {drawerPays.filter((p) => p.contractId === ht.id).map((p) => (
-                        <div className="alert-line" key={p.id}>
-                          <span className="txt">{p.status === "逾期" ? <Chip kind="danger">逾期</Chip> : p.status === "已收" ? <Chip kind="green">已收</Chip> : <Chip kind="warn">{p.status}</Chip>}</span>
-                          <span className="amt num">{money(p.amount)}</span>
-                          <time>{p.dueDate}</time>
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                  {drawerTasks.length > 0 ? (
-                    <div style={{ marginTop: 8 }}>
-                      <div className="dsec" style={{ padding: 0 }}>关联任务</div>
-                      {drawerTasks.map((t) => <div className="mini-row" key={t.id}><span className="ev">{t.title}</span><Chip gray>{t.kanbanCol}</Chip></div>)}
-                    </div>
-                  ) : null}
-                  {drawerContracts.length === 0 ? <p className="muted">暂无合同</p> : null}
-                </div>
-              )}
               {tab === "媒介策略" && drawerC ? (
                 <MediaStrategyView customer={drawerC} onEdit={openStrategyEdit} />
               ) : null}
               {tab === "AI建议" && (
-                <div style={{ padding: 8 }}>
+                <div className="advice-structured">
                   <Btn kind="primary" onClick={() => { void genAdvice(); }} disabled={aiBusy}>
                     {aiBusy ? "思考中…" : "生成跟进建议"}
                   </Btn>
-                  {aiAdvice ? <pre style={{ whiteSpace: "pre-wrap", marginTop: 12, fontSize: 13, lineHeight: 1.7, background: "var(--surface-2)", padding: 12, borderRadius: 8 }}>{aiAdvice}</pre> : null}
+
+                  <div className="ask-box">
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <div className="filter-input" style={{ flex: 1 }}>
+                        <IconSearch size={13} />
+                        <input value={askInput}
+                          onChange={(e) => setAskInput(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Enter") runAsk(); }}
+                          placeholder="问我:这个客户有多少在途商机?最近跟进是什么时候?" />
+                      </div>
+                      <Btn kind="data" sm onClick={runAsk}>提问</Btn>
+                    </div>
+                    {askHistory.map((h, i) => (
+                      <div className="ask-item" key={i}>
+                        <div className="ask-q"><Chip kind="data">本地问数</Chip><span>{h.q}</span></div>
+                        <div className="ask-a">{h.a}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {aiStructured ? (
+                    <div className="advice-result">
+                      <div className="advice-summary">{aiStructured.summary || "客户现状如上,建议优先推动关键决策与待办动作。"}</div>
+                      <div className="advice-cols">
+                        <div className="advice-section">
+                          <div className="sec-title"><Chip kind="data">关键决策</Chip></div>
+                          {aiStructured.decisions.length ? <ol className="advice-list">{aiStructured.decisions.map((x, i) => <li key={i}>{x}</li>)}</ol> : <p className="muted" style={{ fontSize: "var(--text-xs)" }}>无</p>}
+                        </div>
+                        <div className="advice-section">
+                          <div className="sec-title"><Chip kind="brand">待办</Chip></div>
+                          {aiStructured.todos.length ? <ol className="advice-list">{aiStructured.todos.map((x, i) => <li key={i}>{x}</li>)}</ol> : <p className="muted" style={{ fontSize: "var(--text-xs)" }}>无</p>}
+                        </div>
+                        <div className="advice-section">
+                          <div className="sec-title"><Chip kind="danger">风险</Chip></div>
+                          {aiStructured.risks.length ? <ol className="advice-list">{aiStructured.risks.map((x, i) => <li key={i}>{x}</li>)}</ol> : <p className="muted" style={{ fontSize: "var(--text-xs)" }}>无明显风险</p>}
+                        </div>
+                      </div>
+                    </div>
+                  ) : aiAdvice ? (
+                    <pre style={{ whiteSpace: "pre-wrap", marginTop: 12, fontSize: 13, lineHeight: 1.7, background: "var(--surface-2)", padding: 12, borderRadius: 8 }}>{aiAdvice}</pre>
+                  ) : null}
                 </div>
               )}
             </div>
             <div className="drawer-foot">
+              <Btn kind={editingLayout ? "data" : "ghost"} onClick={() => { if (editingLayout) void finishEditLayout(); else setEditingLayout(true); }}>{editingLayout ? "完成" : "编辑布局"}</Btn>
               <Btn kind="primary" onClick={() => setCpOpen(true)}>记录跟进</Btn>
               <Btn kind="ghost" onClick={() => { void (async () => { await tryDelete(drawerC); })(); }}>删除</Btn>
               <Btn kind="ghost" onClick={exportCustomerPack}>导出客户包</Btn>
@@ -463,7 +657,7 @@ export default function CRM(props: Props) {
             </Field>
           </div>
           <Field label="开票抬头(可选)"><input className="inp" style={{ width: "100%" }} value={form.billingTitle} onChange={(e) => setForm({ ...form, billingTitle: e.target.value })} /></Field>
-          <Field label="税号(可选)" error={errs.billingTaxNo}><input className="inp num" style={{ width: "100%" }} value={form.billingTaxNo} onChange={(e) => setForm({ ...form, billingTaxNo: e.target.value })} /></Field>
+          <Field label="税号(可选)" error={errs.billingTaxNo}><input className="inp" style={{ width: "100%" }} value={form.billingTaxNo} onChange={(e) => setForm({ ...form, billingTaxNo: e.target.value })} /></Field>
           {custFields.map((cf) => (
             <Field key={cf.id} label={cf.label + (cf.type === "select" && cf.options ? "(" + cf.options.join("/") + ")" : "")}>
               <input className="inp" style={{ width: "100%" }} value={form["cf_" + cf.key] ?? ""} onChange={(e) => setForm({ ...form, ["cf_" + cf.key]: e.target.value })} />
@@ -494,6 +688,20 @@ export default function CRM(props: Props) {
             </select>
           </Field>
           <Field label="内容"><textarea className="inp" rows={3} style={{ width: "100%" }} value={cpForm.summary} onChange={(e) => setCpForm({ ...cpForm, summary: e.target.value })} placeholder="本次沟通要点…" /></Field>
+        </Modal>
+      ) : null}
+      {colsOpen ? (
+        <Modal title="字段管理" onClose={() => setColsOpen(false)} footer={
+          <div className="grow"><Btn kind="ghost" onClick={() => setColsOpen(false)}>取消</Btn><Btn kind="primary" onClick={() => setColsOpen(false)}>完成</Btn></div>
+        }>
+          <p className="muted" style={{ marginBottom: 10, fontSize: "var(--text-sm)" }}>勾选列表中显示的列(客户名称不可关闭)。</p>
+          {COL_LIST.map((col) => (
+            <label key={col.key} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", fontSize: "var(--text-sm)" }}>
+              <input type="checkbox" checked={!!vc[col.key]} disabled={col.key === "name"}
+                onChange={() => { const next = { ...vc, [col.key]: !vc[col.key] }; void saveCols(next); }} />
+              {col.label}
+            </label>
+          ))}
         </Modal>
       ) : null}
       {node}

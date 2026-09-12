@@ -98,6 +98,18 @@ app.whenReady().then(() => {
     return { ok: true, restart: true };
   });
 
+  // 融合标题栏颜色随主题切换(浅色=白底深按钮,深色=黑底浅按钮)
+  ipcMain.handle("titlebar:setTheme", (_e, theme: string) => {
+    if (!win) return false;
+    const isLight = theme === "light";
+    win.setTitleBarOverlay({
+      color: isLight ? "#FFFFFF" : "#0E0F13",
+      symbolColor: isLight ? "#333333" : "#E8E8EC",
+      height: 38,
+    });
+    return true;
+  });
+
   // ===== AI:密钥加密存储(safeStorage)+ 云调用代理(主进程无 CORS) =====
   ipcMain.handle("ai:saveKey", (_e, plain: string) => {
     try {

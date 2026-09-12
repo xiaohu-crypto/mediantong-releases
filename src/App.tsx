@@ -38,6 +38,7 @@ declare global {
       aiEnvKey: () => Promise<string>;
       windowMode: string;
       titlebarSet: (mode: "integrated" | "native") => Promise<{ ok: boolean; restart?: boolean }>;
+      titlebarSetTheme: (theme: "dark" | "light") => Promise<boolean>;
       aiChat: (args: { baseUrl: string; apiKey: string; model: string; messages: { role: string; content: string }[] }) =>
         Promise<{ ok: boolean; content?: string; error?: string; status?: number; usage?: { total_tokens?: number } }>;
       backupPickDir: () => Promise<string | null>;
@@ -142,6 +143,7 @@ export default function App() {
       const t = await db.getSetting<"dark" | "light">("theme", "dark");
       setTheme(t);
       document.documentElement.setAttribute("data-theme", t);
+      void window.mta?.titlebarSetTheme?.(t);
       document.documentElement.dataset.titlebar = window.mta?.windowMode ?? "integrated";
     })();
     const onKey = async (e: KeyboardEvent) => {
@@ -211,6 +213,7 @@ export default function App() {
     setTheme(t);
     document.documentElement.setAttribute("data-theme", t);
     void db.setSetting("theme", t);
+    void window.mta?.titlebarSetTheme?.(t);
   }
 
   function goCrm(customerId: string) { setFocusCid(customerId); setView("crm"); }
@@ -283,7 +286,7 @@ export default function App() {
       {view === "today" && data ? (
             <Today customers={data.customers} deals={data.deals} payments={data.payments} cps={data.cps}
               objectives={data.objectives} tasks={data.tasks} milestones={data.milestones}
-              reload={reload} openQuick={() => setShowQuick(true)} goCrm={goCrm} />
+              reload={reload} openQuick={() => setShowQuick(true)} goCrm={goCrm} onNavigate={(v) => setView(v as View)} />
           ) : null}
           {view === "crm" && data ? (
             <CRM customers={data.customers} contacts={data.contacts} rels={data.rels} deals={data.deals}
@@ -291,7 +294,7 @@ export default function App() {
                             reload={reload} focusCustomerId={focusCid} customFields={data.customFields} />
           ) : null}
           {view === "work" && data ? (
-            <Work tasks={data.tasks} objectives={data.objectives} customers={data.customers} reload={reload} />
+            <Work tasks={data.tasks} objectives={data.objectives} customers={data.customers} reload={reload} goCrm={goCrm} />
           ) : null}
           {view === "dev" && data ? (
             <Dev deals={data.deals} customers={data.customers} pitches={data.pitches} reload={reload} />
@@ -304,7 +307,7 @@ export default function App() {
             <Kb notes={data.notes} reload={reload} focusId={kbFocus} />
           ) : null}
           {view === "data" && data ? (
-            <Data contracts={data.contracts} payments={data.payments} deals={data.deals} items={data.items} baselines={data.baselines} postbuys={data.postbuys} resources={data.resources} reload={reload} />
+            <Data contracts={data.contracts} payments={data.payments} deals={data.deals} items={data.items} baselines={data.baselines} postbuys={data.postbuys} resources={data.resources} tasks={data.tasks} reload={reload} />
           ) : null}
           {view === "growth" && data ? (
             <Growth tasks={data.tasks} payments={data.payments} pitches={data.pitches} cps={data.cps} contracts={data.contracts} reload={reload} />

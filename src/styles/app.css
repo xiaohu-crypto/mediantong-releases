@@ -195,7 +195,7 @@ table.tgrid tbody tr:hover{background:var(--surface-2)}
 .ph .big{width:52px;height:52px;border-radius:14px;background:var(--surface);border:1px solid var(--border);display:grid;place-items:center;color:var(--ink-4);margin:0 auto 14px}
 
 /* === 融合标题栏:顶栏为拖拽区;交互元素 no-drag;右侧预留 Windows overlay 窗口控制条 === */
-html[data-titlebar="integrated"] .topbar { -webkit-app-region: drag; padding-right: 156px; }
+html[data-titlebar="integrated"] .topbar { -webkit-app-region: drag; padding-right: 280px; }
 html[data-titlebar="integrated"] .topbar .btn,
 html[data-titlebar="integrated"] .topbar .icon-btn,
 html[data-titlebar="integrated"] .topbar input,
@@ -221,3 +221,91 @@ html[data-titlebar="integrated"] .topbar .filter-input { -webkit-app-region: no-
 @media (max-width: 800px) {
   .kpis { grid-template-columns: 1fr !important; }
 }
+
+/* === P0 首页工作台风格(飞书工作台参考) === */
+.home-banner{display:flex;align-items:center;gap:16px;margin-bottom:16px;padding:18px 22px;background:var(--brand-soft);border:1px solid var(--border);border-radius:var(--r-xl)}
+.home-banner .hb-title{font-size:var(--text-xl);font-weight:700;letter-spacing:-.01em}
+.home-banner .hb-date{font-size:var(--text-sm);color:var(--ink-3);margin-top:2px}
+.home-banner .hb-greet{font-size:var(--text-sm);color:var(--ink-2);margin-top:6px}
+.home-banner .hb-actions{margin-left:auto;flex:none}
+
+.pinned-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:18px}
+.pinned-item{display:flex;flex-direction:column;align-items:center;gap:7px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);min-width:92px;cursor:pointer;transition:border-color var(--t-fast),background var(--t-fast)}
+.pinned-item:hover{border-color:var(--brand);background:var(--surface-2)}
+.pinned-item .pi-icon{color:var(--brand);display:grid;place-items:center}
+.pinned-item .pi-name{font-size:var(--text-xs);color:var(--ink-2);font-weight:550;white-space:nowrap}
+
+.featured-tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:14px}
+.feat-tab{padding:7px 14px;font-size:var(--text-sm);color:var(--ink-3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:550;user-select:none}
+.feat-tab:hover{color:var(--ink-2)}
+.feat-tab.active{color:var(--brand);border-bottom-color:var(--brand)}
+
+.all-tools-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+@media(max-width:1100px){.all-tools-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:800px){.all-tools-grid{grid-template-columns:repeat(2,1fr)}}
+.tool-card{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);cursor:pointer;transition:border-color var(--t-fast),background var(--t-fast)}
+.tool-card:hover{border-color:var(--brand);background:var(--surface-2)}
+.tool-card .tc-icon{width:36px;height:36px;border-radius:var(--r-md);background:var(--brand-soft);color:var(--brand);display:grid;place-items:center;flex:none}
+.tool-card .tc-name{font-size:var(--text-sm);font-weight:600}
+.tool-card .tc-desc{font-size:var(--text-xs);color:var(--ink-3);margin-top:2px}
+
+/* === CRM 阶段筛选快捷栏 === */
+.stage-filter{display:flex;gap:6px;flex-wrap:wrap;padding:10px 14px 0;align-items:center}
+.stage-chip{display:inline-flex;align-items:center;gap:5px;font-size:var(--text-xs);font-weight:550;padding:4px 12px;border-radius:var(--r-full);border:1px solid var(--border);color:var(--ink-3);background:var(--surface);cursor:pointer;transition:all var(--t-fast);user-select:none}
+.stage-chip:hover{color:var(--ink-2);border-color:var(--ink-4)}
+.stage-chip.active{background:var(--brand-soft);border-color:transparent;color:var(--brand);font-weight:600}
+
+/* === CRM 列表密度三档(舒适=默认) === */
+.tgrid-wrap.density-紧凑 td{padding-top:5px;padding-bottom:5px}
+.tgrid-wrap.density-精简 td{padding-top:3px;padding-bottom:3px;font-size:var(--text-xs)}
+.tgrid-wrap.density-精简 .cell-sub{display:none}
+/* === P1 记录详情页 Widget 网格 === */
+.widget-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:14px 18px}
+.widget-grid .span-2{grid-column:1 / -1}
+.widget-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg)}
+@media(max-width:800px){.widget-grid{grid-template-columns:1fr}}
+.record-page .dtabs{position:sticky;top:0;background:var(--surface);z-index:2}
+
+/* === P2 仪表盘 Widget 网格 === */
+.dash-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:0 0 16px}
+.dash-grid .span-1{grid-column:span 1}
+.dash-grid .span-2{grid-column:span 2}
+.dash-grid .span-4{grid-column:span 4}
+@media(max-width:900px){.dash-grid{grid-template-columns:repeat(2,1fr)}.dash-grid .span-2{grid-column:span 2}}
+
+/* === P3 AI 建议结构化输出(CRM 抽屉 AI建议 Tab) === */
+.advice-structured{padding:8px;display:flex;flex-direction:column;gap:12px}
+.advice-result{display:flex;flex-direction:column;gap:12px}
+.advice-summary{padding:12px;background:var(--surface-2);border-radius:var(--r-lg);font-weight:600;font-size:var(--text-sm);line-height:1.6}
+.advice-cols{display:grid;grid-template-columns:1fr;gap:10px}
+@media(min-width:700px){.advice-cols{grid-template-columns:repeat(3,1fr)}}
+.advice-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:10px 12px}
+.advice-section .sec-title{margin-bottom:8px}
+.advice-list{margin:0;padding-left:18px;font-size:var(--text-sm);line-height:1.6;color:var(--ink-2)}
+.advice-list li{margin-bottom:4px}
+
+/* P3 本地问数区 */
+.ask-box{display:flex;flex-direction:column;gap:8px}
+.ask-item{padding:8px 10px;background:var(--surface-2);border:1px solid var(--border-soft);border-radius:var(--r-md);font-size:var(--text-sm)}
+.ask-item .ask-q{display:flex;align-items:center;gap:6px;font-weight:600;margin-bottom:4px}
+.ask-item .ask-a{color:var(--ink-2);line-height:1.6}
+
+/* P3 工作管理 AI 智能聚合卡片 */
+.ai-aggregate .ai-agg-grid{display:grid;grid-template-columns:1fr;gap:12px}
+@media(min-width:900px){.ai-aggregate .ai-agg-grid{grid-template-columns:repeat(3,1fr)}}
+.ai-agg-col{background:var(--surface-2);border-radius:var(--r-md);padding:10px 12px}
+.ai-agg-head{margin-bottom:8px}
+.ai-agg-row{display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--border-soft);font-size:var(--text-sm);flex-wrap:wrap}
+.ai-agg-row:last-child{border-bottom:none}
+.ai-agg-name{font-weight:550;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ai-agg-row .cell-sub{font-size:var(--text-xs);color:var(--ink-3);flex-basis:100%}
+
+/* === P4 布局编辑模式:widget 拖拽重排 === */
+.widget-edit{border:1.5px dashed var(--brand);border-radius:var(--r-lg);padding:4px;margin-bottom:4px;cursor:grab;position:relative}
+.widget-edit:active{cursor:grabbing}
+.widget-edit.dragging{opacity:.4}
+.widget-edit .drag-handle{position:absolute;top:4px;right:6px;font-size:10px;color:var(--ink-4);letter-spacing:2px}
+.drop-indicator{height:2px;background:var(--brand);border-radius:2px;margin:2px 0}
+/* P4 字段可见性编辑区 */
+.field-visibility{padding:8px 12px;border-top:1px solid var(--border-soft);margin-top:8px}
+.field-visibility label{display:flex;align-items:center;gap:6px;font-size:var(--text-xs);color:var(--ink-2);padding:2px 0;cursor:pointer}
